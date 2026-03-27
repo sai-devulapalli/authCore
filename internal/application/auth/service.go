@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/authcore/internal/application/jwks"
+	"github.com/authcore/internal/domain/tenant"
 	"github.com/authcore/internal/domain/token"
 	apperrors "github.com/authcore/pkg/sdk/errors"
 )
@@ -427,7 +428,13 @@ func (s *Service) Introspect(ctx context.Context, req IntrospectRequest) (Intros
 func (s *Service) issueTokens(ctx context.Context, subject, clientID, tenantID, scope, nonce string, includeRefresh bool) (token.TokenResponse, *apperrors.AppError) {
 	kp, keyErr := s.jwksSvc.GetActiveKeyPair(ctx, tenantID)
 	if keyErr != nil {
-		return token.TokenResponse{}, apperrors.Wrap(apperrors.ErrInternal, "no signing key available", keyErr)
+		// Auto-provision signing key on first token issuance
+		s.logger.Info("auto-provisioning signing key", "tenant_id", tenantID)
+		kid := mustGenerateID()
+		kp, keyErr = s.jwksSvc.EnsureKeyPair(ctx, tenantID, kid, tenant.RS256)
+		if keyErr != nil {
+			return token.TokenResponse{}, apperrors.Wrap(apperrors.ErrInternal, "no signing key available", keyErr)
+		}
 	}
 
 	now := time.Now().UTC()

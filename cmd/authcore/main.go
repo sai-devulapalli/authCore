@@ -228,8 +228,9 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 	// OIDC/OAuth routes (wrapped with tenant middleware)
 	mux.Handle("/.well-known/openid-configuration",
 		tenantResolver.Middleware(http.HandlerFunc(discoveryHandler.HandleDiscovery)))
-	mux.Handle("/jwks",
-		tenantResolver.Middleware(http.HandlerFunc(jwksHandler.HandleJWKS)))
+	// JWKS is public (no tenant middleware) — allows standard OIDC libraries to fetch keys
+	// The handler falls back to X-Tenant-ID header or "default" tenant
+	mux.HandleFunc("/jwks", jwksHandler.HandleJWKS)
 	mux.Handle("/authorize",
 		tenantResolver.Middleware(http.HandlerFunc(authorizeHandler.HandleAuthorize)))
 	mux.Handle("/token",

@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/saidevulapalli/Documents/github/personnal/authCore -type f ! -path */.git/*)",
+      "Bash(git config:*)",
+      "Bash(find /Users/saidevulapalli/Documents/github/personnal/authCore -not -path */.git*)",
+      "WebSearch",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); print\\(data[0][''''text''''][:8000]\\)\")",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); text=data[0][''''text'''']; print\\(text[8000:16000]\\)\")",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); text=data[0][''''text'''']; print\\(text[16000:24000]\\)\")",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); text=data[0][''''text'''']; print\\(text[24000:]\\)\")",
+      "Bash(chmod:*)",
+      "Bash(go mod:*)",
+      "Read(//usr/local/go/bin/**)",
+      "Read(//opt/homebrew/bin/**)",
+      "Bash(echo \"PATH=$PATH\")",
+      "Bash(brew install:*)",
+      "Bash(export PATH=\"/opt/homebrew/bin:$PATH\")",
+      "Bash(go version:*)",
+      "Bash(make build:*)",
+      "Bash(./scripts/coverage.sh coverage-unit.out 85)",
+      "Bash(./bin/authcore version:*)",
+      "Bash(./bin/authcore)",
+      "Bash(go test:*)",
+      "Bash(go doc:*)",
+      "Bash(go tool:*)",
+      "Bash(go vet:*)",
+      "Bash(go build:*)",
+      "Bash(make test-unit:*)",
+      "Bash(make coverage-check:*)",
+      "Bash(make lint:*)",
+      "Bash(grep -c \"--- PASS\")",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); text=data[0][''''text'''']; print\\(text[24000:32000]\\)\")",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); text=data[0][''''text'''']; print\\(text[32000:]\\)\")"
+    ]
+  }
+}

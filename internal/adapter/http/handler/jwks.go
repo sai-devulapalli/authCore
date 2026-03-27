@@ -26,10 +26,13 @@ func (h *JWKSHandler) HandleJWKS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Tenant ID from context (set by middleware) or header fallback.
+	// Tenant ID resolution: context → header → query param → "default"
 	tenantID, ok := shared.TenantFromContext(r.Context())
 	if !ok {
 		tenantID = r.Header.Get("X-Tenant-ID")
+		if tenantID == "" {
+			tenantID = r.URL.Query().Get("tenant_id")
+		}
 		if tenantID == "" {
 			tenantID = "default"
 		}
