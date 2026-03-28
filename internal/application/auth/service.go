@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/authcore/internal/application/jwks"
+	"github.com/authcore/internal/domain/rbac"
 	"github.com/authcore/internal/domain/tenant"
 	"github.com/authcore/internal/domain/token"
 	apperrors "github.com/authcore/pkg/sdk/errors"
@@ -23,6 +24,7 @@ type Service struct {
 	deviceRepo    token.DeviceCodeRepository
 	blacklist     token.TokenBlacklist
 	userValidator token.UserValidator
+	assignRepo    rbac.AssignmentRepository
 	jwksSvc       *jwks.Service
 	signer        token.Signer
 	logger        *slog.Logger
@@ -74,6 +76,12 @@ func (s *Service) WithBlacklist(bl token.TokenBlacklist) *Service {
 // WithUserValidator sets the user credential validator (for password grant).
 func (s *Service) WithUserValidator(uv token.UserValidator) *Service {
 	s.userValidator = uv
+	return s
+}
+
+// WithRBAC sets the RBAC assignment repo for including roles/permissions in JWT.
+func (s *Service) WithRBAC(assignRepo rbac.AssignmentRepository) *Service {
+	s.assignRepo = assignRepo
 	return s
 }
 
@@ -439,13 +447,26 @@ func (s *Service) issueTokens(ctx context.Context, subject, clientID, tenantID, 
 
 	now := time.Now().UTC()
 
+	// Fetch RBAC roles + permissions if configured
+	var roles []string
+	var permissions []string
+	if s.assignRepo != nil && subject != "" {
+		userRoles, _ := s.assignRepo.GetUserRoles(ctx, subject, tenantID)
+		for _, r := range userRoles {
+			roles = append(roles, r.Name)
+		}
+		permissions = rbac.FlattenPermissions(userRoles)
+	}
+
 	accessClaims := token.Claims{
-		Issuer:    "https://authcore",
-		Subject:   subject,
-		Audience:  []string{clientID},
-		ExpiresAt: now.Add(s.accessTTL).Unix(),
-		IssuedAt:  now.Unix(),
-		JWTID:     mustGenerateID(),
+		Issuer:      "https://authcore",
+		Subject:     subject,
+		Audience:    []string{clientID},
+		ExpiresAt:   now.Add(s.accessTTL).Unix(),
+		IssuedAt:    now.Unix(),
+		JWTID:       mustGenerateID(),
+		Roles:       roles,
+		Permissions: permissions,
 	}
 
 	accessToken, signErr := s.signer.Sign(accessClaims, kp.ID, kp.PrivateKey, kp.Algorithm)

@@ -27,6 +27,8 @@ import (
 	"github.com/authcore/internal/application/jwks"
 	mfasvc "github.com/authcore/internal/application/mfa"
 	providersvc "github.com/authcore/internal/application/provider"
+	auditsvc "github.com/authcore/internal/application/audit"
+	rbacsvc "github.com/authcore/internal/application/rbac"
 	"github.com/authcore/internal/application/social"
 	tenantsvc "github.com/authcore/internal/application/tenant"
 	usersvc "github.com/authcore/internal/application/user"
@@ -36,6 +38,7 @@ import (
 	"github.com/authcore/internal/domain/jwk"
 	"github.com/authcore/internal/domain/mfa"
 	domainotp "github.com/authcore/internal/domain/otp"
+	"github.com/authcore/internal/domain/rbac"
 	"github.com/authcore/internal/domain/tenant"
 	"github.com/authcore/internal/domain/token"
 	"github.com/authcore/internal/domain/user"
@@ -79,10 +82,13 @@ type repos struct {
 	state           identity.StateRepository
 	totp            mfa.TOTPRepository
 	challenge       mfa.ChallengeRepository
+	role            rbac.RoleRepository
+	assignment      rbac.AssignmentRepository
 }
 
 // setupInMemoryRepos creates all in-memory repositories (development mode).
 func setupInMemoryRepos() repos {
+	roleRepo := cache.NewInMemoryRoleRepository()
 	return repos{
 		jwk:        cache.NewInMemoryJWKRepository(),
 		tenant:     cache.NewInMemoryTenantRepository(),
@@ -98,14 +104,16 @@ func setupInMemoryRepos() repos {
 		state:      cache.NewInMemoryStateRepository(),
 		totp:       cache.NewInMemoryTOTPRepository(),
 		challenge:  cache.NewInMemoryChallengeRepository(),
+		role:       roleRepo,
+		assignment: cache.NewInMemoryAssignmentRepository(roleRepo),
 	}
 }
 
 // setupProdRepos creates Postgres + Redis backed repos for production.
 func setupProdRepos(db *sql.DB, redisClient *adaptredis.Client) repos {
 	rdb := redisClient.Redis()
+	roleRepo := cache.NewInMemoryRoleRepository() // TODO: postgres role repo
 	return repos{
-		// Persistent repos (Postgres)
 		jwk:        postgres.NewJWKRepository(db),
 		tenant:     postgres.NewTenantRepository(db),
 		client:     postgres.NewClientRepository(db),
@@ -113,20 +121,21 @@ func setupProdRepos(db *sql.DB, redisClient *adaptredis.Client) repos {
 		refresh:    postgres.NewRefreshTokenRepository(db),
 		provider:   postgres.NewProviderRepository(db),
 		externalID: postgres.NewExternalIdentityRepository(db),
-		// Ephemeral repos (Redis with TTL)
 		session:    adaptredis.NewSessionRepository(rdb),
 		code:       adaptredis.NewCodeRepository(rdb),
 		device:     adaptredis.NewDeviceCodeRepository(rdb),
 		blacklist:  adaptredis.NewTokenBlacklist(rdb),
 		state:      adaptredis.NewStateRepository(rdb),
-		// MFA repos stay in-memory (low volume, short TTL)
 		totp:       cache.NewInMemoryTOTPRepository(),
 		challenge:  cache.NewInMemoryChallengeRepository(),
+		role:       roleRepo,
+		assignment: cache.NewInMemoryAssignmentRepository(roleRepo),
 	}
 }
 
 // setupPostgresRepos creates Postgres-backed repos without Redis (fallback).
 func setupPostgresRepos(db *sql.DB) repos {
+	roleRepo := cache.NewInMemoryRoleRepository()
 	return repos{
 		jwk:        postgres.NewJWKRepository(db),
 		tenant:     postgres.NewTenantRepository(db),
@@ -142,6 +151,8 @@ func setupPostgresRepos(db *sql.DB) repos {
 		state:      cache.NewInMemoryStateRepository(),
 		totp:       cache.NewInMemoryTOTPRepository(),
 		challenge:  cache.NewInMemoryChallengeRepository(),
+		role:       roleRepo,
+		assignment: cache.NewInMemoryAssignmentRepository(roleRepo),
 	}
 }
 
@@ -168,6 +179,13 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 
 	clientService := clientsvc.NewService(r.client, hasher, log)
 	tenantSvc := tenantsvc.NewService(r.tenant, log)
+	rbacService := rbacsvc.NewService(r.role, r.assignment, log)
+	auditRepo := cache.NewInMemoryAuditRepository()
+	auditService := auditsvc.NewService(auditRepo, log)
+	_ = auditService // available for handlers to log events
+
+	// Wire RBAC into auth service for JWT claims
+	authSvc.WithRBAC(r.assignment)
 
 	oauthClient := adapthttp.NewHTTPOAuthClient()
 	providerService := providersvc.NewService(r.provider, log)
@@ -198,8 +216,9 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 
 	// Middleware
 	corsMiddleware := middleware.NewCORS(cfg.CORSOrigins)
+	tracingMiddleware := middleware.NewTracing()
 	adminAuth := middleware.NewAdminAuth(cfg.AdminAPIKey)
-	authRateLimiter := middleware.NewRateLimiter(20, 1*time.Minute) // 20 req/min per IP for auth endpoints
+	authRateLimiter := middleware.NewRateLimiter(20, 1*time.Minute)
 	tenantResolver := middleware.NewTenantResolver(tenantSvc, cfg.TenantMode, log)
 
 	// HTTP handlers
@@ -219,6 +238,8 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 	providerHandler := handler.NewProviderHandler(providerService)
 	mfaHandler := handler.NewMFAHandler(mfaService)
 	userHandler := handler.NewUserHandler(userService)
+	rbacHandler := handler.NewRBACHandler(rbacService)
+	auditHandler := handler.NewAuditHandler(auditService)
 	tenantHandler := handler.NewTenantHandler(tenantSvc)
 
 	healthRegistry := health.NewRegistry()
@@ -290,6 +311,26 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 			}
 			return
 		}
+		if strings.Contains(r.URL.Path, "/roles") {
+			if strings.Count(r.URL.Path, "/") >= 4 {
+				rbacHandler.HandleRole(w, r)
+			} else {
+				rbacHandler.HandleRoles(w, r)
+			}
+			return
+		}
+		if strings.Contains(r.URL.Path, "/users/") && strings.Contains(r.URL.Path, "/permissions") {
+			rbacHandler.HandleUserPermissions(w, r)
+			return
+		}
+		if strings.Contains(r.URL.Path, "/users/") && strings.HasSuffix(r.URL.Path, "/roles") {
+			rbacHandler.HandleUserRoles(w, r)
+			return
+		}
+		if strings.Contains(r.URL.Path, "/audit") {
+			auditHandler.HandleAuditLogs(w, r)
+			return
+		}
 		tenantHandler.HandleTenant(w, r)
 	})))
 
@@ -306,8 +347,8 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 		})
 	})
 
-	// Wrap entire mux with CORS
-	return corsMiddleware.Middleware(mux)
+	// Wrap entire mux with tracing → CORS
+	return tracingMiddleware.Middleware(corsMiddleware.Middleware(mux))
 }
 
 // connectDB opens and verifies a database connection, runs migrations.

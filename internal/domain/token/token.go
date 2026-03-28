@@ -15,6 +15,10 @@ type Claims struct {
 	Email         string `json:"email,omitempty"`
 	EmailVerified *bool  `json:"email_verified,omitempty"`
 	Name          string `json:"name,omitempty"`
+
+	// RBAC claims
+	Roles       []string `json:"roles,omitempty"`
+	Permissions []string `json:"permissions,omitempty"`
 }
 
 // TokenResponse is the OAuth 2.0 token response (RFC 6749 Section 5.1).
