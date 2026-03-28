@@ -2,7 +2,7 @@
 
 **Headless Identity & Access Management Engine**
 
-AuthCore is a lightweight, multi-tenant IAM engine that provides OIDC/OAuth 2.0 authentication for any tech stack. No UI — pure API. 15MB Docker image. 666 tests.
+AuthCore is a lightweight, multi-tenant IAM engine that provides OIDC/OAuth 2.0 authentication and authorization for any tech stack. No UI — pure API. 15MB Docker image. 720 tests. 85% coverage.
 
 ## Quick Start
 
@@ -36,9 +36,15 @@ AUTHCORE_ADMIN_API_KEY="your-key" \
 | Client Registry with enforcement | Done |
 | Rate Limiting | Done |
 | AES-256-GCM Encryption at Rest | Done |
+| RBAC (roles + permissions in JWT) | Done |
+| Audit Logging (25+ event types) | Done |
+| OpenTelemetry Tracing | Done |
+| mTLS for M2M | Done |
 | Postgres + Redis persistence | Done |
+| Go SDK (embeddable library) | Done |
+| SDKs: Java, .NET, Node.js, Python | Done |
 
-## Endpoints (25)
+## Endpoints (35+)
 
 ```
 OIDC/OAuth:     /.well-known/openid-configuration  /jwks  /authorize  /token
@@ -46,6 +52,9 @@ OIDC/OAuth:     /.well-known/openid-configuration  /jwks  /authorize  /token
 User Auth:      /register  /login  /logout  /userinfo
 OTP:            /otp/request  /otp/verify  /password/reset
 MFA:            /mfa/totp/enroll  /mfa/totp/confirm  /mfa/verify
+RBAC:           /tenants/{id}/roles  /tenants/{id}/users/{uid}/roles
+                /tenants/{id}/users/{uid}/permissions
+Audit:          /tenants/{id}/audit
 Management:     /tenants  /tenants/{id}  /tenants/{id}/clients  /tenants/{id}/providers
 Health:         /health
 ```
@@ -307,7 +316,7 @@ curl -X POST http://localhost:8080/token \
 
 - **Domain**: Pure Go, no I/O, no frameworks
 - **Application**: Use cases orchestrating domain via port interfaces
-- **Adapter**: Postgres, Redis, SMTP, Twilio, stdlib crypto (no external JWT libs)
+- **Adapter**: Postgres (7 repos), Redis (7 repos), SMTP, Twilio, stdlib crypto (no external JWT libs)
 
 ## Documentation
 
@@ -317,6 +326,11 @@ curl -X POST http://localhost:8080/token \
 | [Flows](docs/FLOWS.md) | 11 sequence diagrams for all auth flows |
 | [Use Cases & Integration](docs/USE_CASES.md) | SPA, mobile, M2M, device code, social login + full SDK examples |
 | [API Reference](docs/README.md) | Complete endpoint reference with curl examples |
+| [Token Architecture](docs/TOKEN_ARCHITECTURE.md) | Session tokens, JWTs, refresh rotation, storage |
+| [RBAC](docs/RBAC.md) | Roles, permissions, wildcard matching, JWT enrichment |
+| [Compliance](docs/COMPLIANCE.md) | GDPR, SOC2, HIPAA, OWASP analysis |
+| [SDK Guide](docs/SDK_GUIDE.md) | Embedded Go SDK, persistence options |
+| [Deployment](docs/DEPLOYMENT.md) | Deployment models, cloud strategies, HA architecture |
 | [Comparison](docs/COMPARISON.md) | AuthCore vs Keycloak vs IdentityServer vs Cognito |
 | [Roadmap](docs/ROADMAP.md) | Pending items, SAML/LDAP/Admin UI analysis |
 | [Implementation Tracker](docs/IMPLEMENTATION_TRACKER.md) | Module status, changelog, standards compliance |
@@ -324,12 +338,14 @@ curl -X POST http://localhost:8080/token \
 ## Stats
 
 ```
-Files:     ~210 Go files (source + test)
-Tests:     666 assertions across 38 packages
-Coverage:  85.2% (85% threshold enforced)
+Files:     ~237 Go files (source + test)
+Tests:     720 assertions across 40 packages
+Coverage:  85.0% (85% threshold enforced)
 Image:     ~15MB (distroless)
 RAM:       <300MB
 Deps:      6 (env, testify, x/crypto, pgx, go-redis, testcontainers)
+Modules:   12 completed (0-10 + SDK)
+Migrations: 11 SQL files
 ```
 
 ## License

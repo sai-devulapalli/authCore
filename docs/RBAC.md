@@ -463,11 +463,13 @@ The delay = JWT expiry time (1 hour max).
 
 | Component | Status |
 |-----------|--------|
-| Domain model (Role, Assignment) | **Planned** |
-| Repository interfaces | **Planned** |
-| Postgres migration (010_create_rbac.sql) | **Planned** |
-| Application service (RBAC CRUD) | **Planned** |
-| HTTP handlers (role + assignment endpoints) | **Planned** |
-| JWT claims extension | **Planned** |
-| Permission checking helpers | **Planned** |
-| Estimated effort | **~1 week** |
+| Domain model (Role, Assignment) | **Done** — `internal/domain/rbac/` |
+| Repository interfaces | **Done** — RoleRepository, AssignmentRepository |
+| In-memory repositories | **Done** — `internal/adapter/cache/rbac_repository.go` |
+| Postgres migration (010_create_rbac.sql) | **Done** — roles + user_role_assignments tables |
+| Application service (RBAC CRUD) | **Done** — `internal/application/rbac/` |
+| HTTP handlers (role + assignment endpoints) | **Done** — `internal/adapter/http/handler/rbac.go` |
+| JWT claims extension | **Done** — Auth service enriches JWT with roles + permissions |
+| Permission checking helpers | **Done** — `HasPermission()`, `FlattenPermissions()` in domain |
+| Go SDK integration | **Done** — `AssignRole()` in pkg/authcore |
+| Wrapper SDKs | **Done** — Java, .NET, Node.js, Python all include RBAC methods |

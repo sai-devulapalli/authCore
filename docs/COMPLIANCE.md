@@ -5,12 +5,12 @@
 | Standard | Status | Key Gaps |
 |----------|--------|----------|
 | GDPR (EU data protection) | Partial | No data export API, no hard delete, no consent management |
-| SOC 2 Type II | Not ready | No audit logging, no access reviews, no pen test |
-| HIPAA (healthcare) | Not ready | No audit trail, no BAA, no TLS enforcement |
+| SOC 2 Type II | Partial | Audit logging done. Missing: access reviews, pen test |
+| HIPAA (healthcare) | Partial | Audit trail done. Missing: BAA, TLS enforcement |
 | PCI DSS (payments) | Not applicable | AuthCore does not store payment data |
 | ISO 27001 | Not ready | No ISMS, no risk assessment documentation |
 | CCPA (California privacy) | Partial | Same gaps as GDPR |
-| OWASP Top 10 | 8 of 10 covered | Missing security headers and audit logging |
+| OWASP Top 10 | 9 of 10 covered | Missing security headers (CSP, HSTS) |
 
 ---
 
@@ -33,6 +33,10 @@
 | Parameterized SQL | All queries use $1, $2 placeholders | OWASP A03 (injection) |
 | Minimal dependencies | 6 external deps, all well-maintained | OWASP A06 (vulnerable components) |
 | CORS | Configurable allowed origins | OWASP A05 (misconfiguration) |
+| RBAC | Roles + permissions per tenant, wildcard matching, in JWT | SOC2 (access control), HIPAA |
+| Audit logging | 25+ event types, query API with filters | SOC2 CC6.1, HIPAA, GDPR Art. 33 |
+| mTLS | Mutual TLS for M2M client certificate verification | SOC2 (encryption in transit) |
+| OpenTelemetry tracing | Distributed trace context middleware | SOC2 CC7.2 (monitoring) |
 
 ---
 
@@ -48,7 +52,7 @@
 | A06 | Vulnerable Components | Low risk | 6 dependencies only: pgx, go-redis, testify, x/crypto, env, testcontainers |
 | A07 | Auth Failures | Covered | Rate limiting, no user enumeration, MFA, PKCE, refresh rotation |
 | A08 | Data Integrity Failures | Covered | JWT signature verification, PKCE, CSRF state for social login |
-| A09 | Logging & Monitoring | Partial | Structured logging exists. Missing: audit trail, alerting |
+| A09 | Logging & Monitoring | Covered | Structured logging + audit trail (25+ event types) + OpenTelemetry tracing. Missing: alerting |
 | A10 | SSRF | Low risk | Outbound OAuth calls to configured providers only |
 
 ---
@@ -79,20 +83,20 @@
 
 | Category | Requirement | Status | What's Needed |
 |----------|------------|--------|---------------|
-| CC6.1 | Audit logging | Missing | Log all admin actions, login events, token issuance, config changes |
+| CC6.1 | Audit logging | Done | 25+ event types: login, register, OTP, MFA, token, session, tenant, client, role, provider, admin API |
 | CC6.2 | Access reviews | Missing | API to list admin access, when granted, by whom |
 | CC6.3 | Change management | Partial | Git history exists. Need formal approval process |
 | CC6.6 | Encryption in transit | Partial | AuthCore relies on reverse proxy for TLS |
 | CC6.7 | Encryption at rest | Done | AES-256-GCM |
 | CC7.1 | Incident response | Missing | Alerting on failed logins, brute force, token replay |
-| CC7.2 | Monitoring | Partial | Structured logging. No metrics or dashboards |
+| CC7.2 | Monitoring | Partial | Structured logging + OpenTelemetry tracing. No metrics or dashboards |
 | CC7.3 | Backup & recovery | Missing | Relies on Postgres/Redis ops |
 | CC8.1 | Penetration testing | Missing | No external security audit |
 | CC9.1 | Security policies | Missing | Documentation, not code |
 
 | Fix Priority | Items | Effort |
 |-------------|-------|--------|
-| Critical | Audit logging (all events to DB) | 1 week |
+| ~~Critical~~ | ~~Audit logging (all events to DB)~~ | **Done** |
 | High | Alerting on suspicious activity | 2-3 days |
 | Medium | Backup procedures documentation | 1 day |
 | External | Penetration test | $5K-30K, 1-2 weeks |
@@ -105,8 +109,8 @@
 | Requirement | Status | What's Needed |
 |-------------|--------|---------------|
 | BAA (Business Associate Agreement) | Missing | Legal document |
-| Audit trail | Missing | Same as SOC2 audit logging |
-| Access controls | Partial | Admin API key exists. Need role-based admin access |
+| Audit trail | Done | 25+ event types, query API with filters |
+| Access controls | Done | Admin API key + RBAC (roles, permissions, per-tenant) |
 | Encryption in transit | Partial | Need to enforce TLS, reject plain HTTP in production |
 | Encryption at rest | Done | AES-256-GCM |
 | Automatic logoff | Done | Session TTL (24 hours) |
@@ -116,7 +120,7 @@
 
 | Fix Priority | Items | Effort |
 |-------------|-------|--------|
-| Critical | Audit trail | 1 week |
+| ~~Critical~~ | ~~Audit trail~~ | **Done** |
 | High | TLS enforcement middleware | 1 day |
 | Medium | Emergency access procedure | 2 days |
 | Legal | BAA template | Legal team |
@@ -127,7 +131,7 @@
 
 | # | Risk | Impact | Severity | Fix | Effort |
 |---|------|--------|----------|-----|--------|
-| 1 | No audit logging | SOC2 fails, GDPR breach notification impossible, HIPAA violation | Critical | Add `audit_events` table logging all auth events | 1 week |
+| ~~1~~ | ~~No audit logging~~ | ~~SOC2 fails~~ | ~~Critical~~ | **Done** — 25+ event types, audit_events table, query API | **Done** |
 | 2 | No hard delete | GDPR Art. 17 violation. Fine: up to 4% annual revenue | High | Add `/users/{id}/purge` with cascade delete | 2-3 days |
 | 3 | No TLS enforcement | Passwords transmitted plaintext if no proxy. HIPAA violation | High | Middleware to reject HTTP in production | 1 day |
 | 4 | No security headers | OWASP A05. Clickjacking, MIME sniffing possible | Medium | Add HSTS, CSP, X-Content-Type-Options, X-Frame-Options | 30 min |
@@ -144,10 +148,10 @@
 |-------------|:-:|------------|
 | Internal tools | Yes | No regulatory requirement |
 | Startup MVP | Yes | Speed over compliance at this stage |
-| B2B SaaS (non-regulated) | Yes with caveats | Add audit logging before first enterprise customer |
+| B2B SaaS (non-regulated) | Yes | Audit logging, RBAC, encryption all in place |
 | EU customers (GDPR) | Partial | Add data export + hard delete before handling EU PII |
-| Healthcare (HIPAA) | No | Need audit trail + BAA + TLS enforcement |
-| Finance (PCI/SOC2) | No | Need audit logging + pen test + formal policies |
+| Healthcare (HIPAA) | Partial | Audit trail done. Need BAA + TLS enforcement |
+| Finance (PCI/SOC2) | Partial | Audit logging done. Need pen test + formal policies |
 | Government | No | Need SOC2 + FedRAMP (significant additional work) |
 
 ---
@@ -156,8 +160,8 @@
 
 | Phase | Items | Effort | Unlocks |
 |-------|-------|--------|---------|
-| Phase 1 | Security headers, TLS enforcement, hard delete | 3 days | OWASP Top 10 clean |
-| Phase 2 | Audit logging (all events to DB) | 1 week | SOC2 readiness |
+| ~~Phase 1~~ | ~~Audit logging (all events to DB)~~ | **Done** | ~~SOC2 readiness~~ |
+| Phase 2 | Security headers, TLS enforcement, hard delete | 3 days | OWASP Top 10 clean |
 | Phase 3 | Data export, consent management | 1 week | GDPR compliance |
 | Phase 4 | Secret backend support (Vault / AWS Secrets Manager) | 3 days | SOC2 secret management |
 | Phase 5 | External penetration test | 1-2 weeks (external) | SOC2 Type II, customer trust |
@@ -169,10 +173,10 @@
 
 | Standard | **AuthCore** | **Keycloak** | **IdentityServer** | **Cognito** |
 |----------|:-:|:-:|:-:|:-:|
-| OWASP Top 10 | 8/10 | 10/10 | 7/10 | 10/10 |
+| OWASP Top 10 | 9/10 | 10/10 | 7/10 | 10/10 |
 | GDPR ready | Partial | Yes | Partial | Yes |
-| SOC 2 ready | No (needs audit logging) | Yes (with Red Hat SSO) | Partial | Certified |
-| HIPAA ready | No (needs audit trail) | Yes (with config) | No | Certified |
+| SOC 2 ready | Partial (audit logging done, needs pen test) | Yes (with Red Hat SSO) | Partial | Certified |
+| HIPAA ready | Partial (audit trail done, needs BAA) | Yes (with config) | No | Certified |
 | PCI DSS | N/A | Ready | Ready | Certified |
 | Pen tested | No | Yes (10+ years) | Yes | Yes |
 | Security team | None | Red Hat | Duende | AWS |
@@ -180,7 +184,7 @@
 
 ---
 
-## Audit Events Schema (Planned)
+## Audit Events Schema (Implemented)
 
 | Field | Type | Description |
 |-------|------|-------------|

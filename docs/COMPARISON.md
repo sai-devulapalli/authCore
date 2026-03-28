@@ -25,7 +25,7 @@
 | Token Revocation (RFC 7009) | Yes | Yes | Yes | Yes (via API) |
 | Token Introspection (RFC 7662) | Yes | Yes | Yes | No |
 | SAML 2.0 | **Not yet** | Yes (full IdP + SP) | Community add-on | Yes |
-| mTLS | Not yet | Yes | Yes | No |
+| mTLS | Yes | Yes | Yes | No |
 | SCIM (user provisioning) | No | Yes | No | No |
 | JWE (encrypted tokens) | No | Yes | Yes | No |
 | PAR (Pushed Auth Requests) | No | Yes | Yes | No |
@@ -41,10 +41,10 @@
 | User Login | API only (POST /login) | UI + API + themes | No (bring your own) | UI + API + Hosted UI |
 | Session Management | Server-side opaque tokens | Server-side + cookies | Configurable | Managed |
 | Password Hashing | bcrypt (cost 12) | pbkdf2 / bcrypt / argon2 | Configurable | SRP protocol |
-| Email Verification | **Not built** | Built-in (SMTP) | No | Built-in (SES) |
-| Password Reset | **Not built** | Built-in (email link) | No | Built-in (email/SMS) |
+| Email Verification | Yes (auto-OTP on register) | Built-in (SMTP) | No | Built-in (SES) |
+| Password Reset | Yes (OTP-based) | Built-in (email link) | No | Built-in (email/SMS) |
 | User Profile (OIDC) | GET /userinfo | Full profile management | Full | Full |
-| User Groups / Roles | **No** | Full RBAC (roles, groups, permissions) | Claims-based | Groups + custom attributes |
+| User Groups / Roles | Yes (RBAC: roles, permissions, wildcards, in JWT) | Full RBAC (roles, groups, permissions) | Claims-based | Groups + custom attributes |
 | User Federation | No | LDAP, Active Directory, Kerberos | No | SAML federation |
 | Account Linking | ExternalIdentity mapping | Built-in UI | Manual | Yes (federated identities) |
 | Self-Service Account | No | Full (update profile, change password, manage sessions) | No | Limited |
@@ -59,11 +59,11 @@
 |------------|-------------|-------------|-------------------|------------|
 | TOTP (RFC 6238) | Yes | Yes | Via extensibility | Yes |
 | WebAuthn / FIDO2 | **Not yet** (planned) | Yes | Via extensibility | No (custom only) |
-| SMS OTP | No | Yes (via SPI) | No | Yes (SNS) |
-| Email OTP | No | Yes | No | Yes |
+| SMS OTP | Yes (Twilio + console) | Yes (via SPI) | No | Yes (SNS) |
+| Email OTP | Yes (SMTP + console) | Yes | No | Yes |
 | Push Notifications | No | No | No | No |
 | Recovery Codes | No | Yes | No | No |
-| MFA Policy per tenant | Domain model exists, **not enforced** | Per-realm policy (required/optional/conditional) | Custom | Per-pool |
+| MFA Policy per tenant | Yes (enforced in /authorize) | Per-realm policy (required/optional/conditional) | Custom | Per-pool |
 | Adaptive / Risk-based MFA | No | Yes (via extensions) | No | Yes (advanced security) |
 | Step-up Authentication | No | Yes | Yes | No |
 
@@ -96,7 +96,7 @@
 | Public / Confidential | Both | Both + bearer-only + service account | Both | Both |
 | Client Secret Hashing | bcrypt (cost 12) | pbkdf2 | SHA-256 | Managed |
 | Redirect URI Validation | Per-client whitelist, enforced | Per-client, enforced | Per-client, enforced | Per-client, enforced |
-| Scope Enforcement | Stored, **not enforced** | Full enforcement | Full enforcement | Full enforcement |
+| Scope Enforcement | Full enforcement (client allowed_scopes) | Full enforcement | Full enforcement | Full enforcement |
 | Grant Type Restriction | Enforced on /token | Enforced | Enforced | Enforced |
 | CORS per-client | Global config only | Per-client | Per-client | Per-pool |
 | Client Authentication Methods | client_secret_post | client_secret_basic/post, private_key_jwt, client_secret_jwt | All methods | client_secret_basic/post |
@@ -129,16 +129,16 @@
 | Admin CLI | **Not built** | kcadm.sh (powerful) | dotnet CLI | AWS CLI |
 | Health Check | /health endpoint | /health/ready, /health/live | Custom | CloudWatch |
 | Structured Logging | slog (env-aware: text/JSON) | JBoss logging | .NET ILogger | CloudWatch Logs |
-| Distributed Tracing | Hooks ready, OTel **not wired** | Jaeger / OpenTelemetry | OTel | X-Ray |
+| Distributed Tracing | OpenTelemetry middleware | Jaeger / OpenTelemetry | OTel | X-Ray |
 | Metrics | **No** | Prometheus (/metrics) | Custom | CloudWatch Metrics |
 | Horizontal Scaling | Stateless (just add instances) | Infinispan clustering (complex) | Depends on host app | Managed auto-scale |
 | Database | Postgres (+ SQL Server planned) | Postgres, MySQL, Oracle, MSSQL, H2 | Any via EF Core | DynamoDB (managed) |
-| Database Migrations | Auto-run on startup (8 SQL files) | Auto via Liquibase | EF Core migrations | Managed |
+| Database Migrations | Auto-run on startup (11 SQL files) | Auto via Liquibase | EF Core migrations | Managed |
 | Key Rotation | Manual (API call) | Automatic (configurable) | Automatic | Automatic |
-| Rate Limiting | **Not built** | Built-in (brute force detection) | No | WAF integration |
-| Brute Force Protection | **No** | Yes (account lockout, IP blocking) | No | Yes (adaptive auth) |
+| Rate Limiting | Yes (20 req/min per IP sliding window) | Built-in (brute force detection) | No | WAF integration |
+| Brute Force Protection | Rate limiting + OTP attempt tracking | Yes (account lockout, IP blocking) | No | Yes (adaptive auth) |
 | Backup / Restore | DB-level | JSON realm export/import | DB-level | AWS Backup |
-| Audit Logging | **No** | Yes (admin events, login events) | No | CloudTrail |
+| Audit Logging | Yes (25+ event types, query API) | Yes (admin events, login events) | No | CloudTrail |
 
 ---
 
@@ -149,7 +149,7 @@
 | CORS | Global configurable | Per-client | Per-client | Per-pool |
 | CSRF Protection | State parameter (OAuth) | Built-in (cookies) | Built-in | Managed |
 | Admin Auth | API key (constant-time compare) | Username/password + 2FA | N/A | IAM policies |
-| Encryption at Rest | **Not built** (plaintext secrets) | Vault integration | DPAPI / Azure Key Vault | AWS KMS |
+| Encryption at Rest | AES-256-GCM (configurable key) | Vault integration | DPAPI / Azure Key Vault | AWS KMS |
 | TLS Termination | Reverse proxy (nginx/traeger) | Built-in or reverse proxy | Host app | ACM + CloudFront |
 | Security Audit | **None** | Multiple CVEs addressed, active security team | Duende security advisories | AWS security compliance |
 | OWASP Compliance | Partial | Extensive | Partial | Certified (SOC2, HIPAA) |
@@ -240,8 +240,9 @@ AuthCore and Keycloak scale best cost-wise. Cognito becomes expensive at scale. 
 - You're building a **multi-tenant SaaS** and need lightweight tenant isolation
 - You want a **sidecar-deployable** auth service (<300MB RAM)
 - Your team prefers **Go** and wants to understand/audit every line
-- You don't need SAML or admin UI today
-- You're okay investing in the remaining ~20% of hardening
+- You need RBAC, audit logging, MFA, OTP, and social login out of the box
+- You don't need SAML today (OIDC covers most modern identity providers)
+- You want SDKs for Go, Java, .NET, Node.js, Python
 
 ### Choose Keycloak if:
 
@@ -272,11 +273,11 @@ AuthCore and Keycloak scale best cost-wise. Cognito becomes expensive at scale. 
 
 ```
 Keycloak:       ████████████████████████████░░  95%
+AuthCore:       █████████████████████████████░  90%  (up from 65% before RBAC/Audit/OTel/mTLS)
 Cognito:        ██████████████████████░░░░░░░░  75%
 IdentityServer: ████████████████████░░░░░░░░░░  70%
-AuthCore:       ████████████████████░░░░░░░░░░  65%  (up from 55% before Modules 7-8)
 ```
 
-AuthCore's **protocol layer** (OIDC, OAuth, JWT, PKCE) is on par with all three. The gap is **operational**: admin UI, SAML, email, rate limiting, encryption at rest, security audit.
+AuthCore's **protocol layer** (OIDC, OAuth, JWT, PKCE) is on par with all three. The remaining gap is **enterprise**: SAML 2.0, WebAuthn, admin UI, and external security audit.
 
-For teams building custom auth UX on modern stacks, AuthCore provides the right primitives. For teams that need everything out of the box, Keycloak remains the benchmark.
+With RBAC, audit logging, encryption at rest, rate limiting, mTLS, OTP (email + SMS), and OpenTelemetry now implemented, AuthCore is production-ready for most non-SAML use cases. For teams building custom auth UX on modern stacks, AuthCore provides comprehensive primitives with significantly lower operational overhead than Keycloak.

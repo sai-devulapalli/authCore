@@ -1,7 +1,7 @@
 # AuthCore — Implementation Tracker
 
-> **Last updated:** 2026-03-28
-> **Stats:** ~210 files | 666 tests | 85.2% coverage (85% threshold) | 25 endpoints | 38 packages
+> **Last updated:** 2026-03-26
+> **Stats:** ~237 files | 720 tests | 85.0% coverage (85% threshold) | 35+ endpoints | 40 packages
 
 ---
 
@@ -21,9 +21,9 @@
 | 10 | Repository pattern (Postgres + SQL Server) | Partial | 0-4 | Postgres: JWK + tenant repos done. SQL Server: migrations placeholder only |
 | 11 | Hexagonal architecture (domain/application/adapter) | Done | All | Strict layer separation throughout |
 | 12 | No panics — graceful failure with Result[T] | Done | All | Zero panic() in production code |
-| 13 | Quality gates: 85% line coverage | Adjusted | All | Threshold at 83% (infrastructure code untestable without DB) |
-| 14 | Test triad: 85% unit, 10% functional, 5% e2e | Partial | All | Unit: done. Functional/E2E: infra exists, tests not written |
-| 15 | E2E with real Postgres + Redis via testcontainers | Not done | — | Test infrastructure ready |
+| 13 | Quality gates: 85% line coverage | Done | All | Threshold at 85%, currently 85.0% |
+| 14 | Test triad: 85% unit, 10% functional, 5% e2e | Done | All | Unit: 720 tests. E2E: golden path + in-memory variants |
+| 15 | E2E with real Postgres + Redis via testcontainers | Done | E2E | Docker testcontainers + in-memory fallback tests |
 | 16 | Structured logging (local/staging/prod levels) | Done | 1 | slog-based, env-aware |
 | 17 | No mocks in E2E tests | Done | — | Convention established |
 | 18 | 3 environments: local, staging, production | Done | 1+PH | In-memory (local) vs Postgres (staging/prod) |
@@ -32,9 +32,9 @@
 | 21 | Sequence diagram for Auth Code + PKCE | Done | docs | In docs/README.md |
 | 22 | Docker container / single binary | Done | 0 | ~15MB distroless image |
 | 23 | SDK-friendly discovery endpoints | Done | 2 | Any OIDC library auto-configures |
-| 24 | Stateless sessions (Redis/distributed cache) | Partial | 8 | Server-side sessions work, in-memory only |
+| 24 | Stateless sessions (Redis/distributed cache) | Done | 8+GTM | Server-side sessions in Redis (prod) or in-memory (dev) |
 | 25 | SAML 2.0 support | Not done | — | Analysis in docs/ROADMAP.md |
-| 26 | mTLS for M2M | Not done | — | Planned |
+| 26 | mTLS for M2M | Done | 10 | mTLS middleware for client certificate verification |
 | 27 | Externalized logs / event streaming | Partial | 1 | Structured logging done, no webhooks/syslog |
 | 28 | BYODB (Postgres + SQL Server + CockroachDB) | Partial | 0 | Postgres only. CockroachDB is Postgres-compatible |
 
@@ -55,10 +55,12 @@
 | 8 | User Authentication | Done | ~18 | ~35 | POST /register, POST /login, POST /logout, GET /userinfo, session management, /authorize session resolution, UserValidator for password grant |
 | PH | Production Hardening | Done | ~6 | ~15 | CORS middleware, client enforcement on /authorize + /token, admin API key auth, Postgres auto-migration runner (9 SQL files), pgx driver |
 | 9 | OTP + Phone + Password Reset | Done | ~15 | ~25 | POST /otp/request, POST /otp/verify, POST /password/reset, phone field on User, console + SMTP email adapter, console + Twilio SMS adapter |
+| 10 | RBAC + Audit + OTel + mTLS | Done | ~20 | ~40 | RBAC (roles, assignments, permissions in JWT), audit logging (25+ event types, query API), OpenTelemetry tracing middleware, mTLS client cert verification |
+| SDK | Go SDK (pkg/authcore) | Done | ~5 | ~10 | Embeddable AuthCore as library: Register, Login, IssueTokens, VerifyJWT, MountRoutes, RequireJWT middleware |
 
 ---
 
-## All Endpoints (25 + health)
+## All Endpoints (35+ including RBAC/Audit)
 
 | # | Method | Route | Module | Auth | Response |
 |---|--------|-------|--------|------|----------|
@@ -87,6 +89,13 @@
 | 23 | GET/PUT/DELETE | `/tenants/{id}/clients/{cid}` | 5 | Admin API key | WriteJSON |
 | 24 | POST/GET | `/tenants/{id}/providers` | 6 | Admin API key | WriteJSON |
 | 25 | GET/DELETE | `/tenants/{id}/providers/{pid}` | 6 | Admin API key | WriteJSON |
+| 26 | POST/GET | `/tenants/{id}/roles` | 10 | Admin API key | WriteJSON |
+| 27 | GET/PUT/DELETE | `/tenants/{id}/roles/{rid}` | 10 | Admin API key | WriteJSON |
+| 28 | POST | `/tenants/{id}/users/{uid}/roles/{rid}` | 10 | Admin API key | WriteJSON |
+| 29 | DELETE | `/tenants/{id}/users/{uid}/roles/{rid}` | 10 | Admin API key | WriteJSON |
+| 30 | GET | `/tenants/{id}/users/{uid}/roles` | 10 | Admin API key | WriteJSON |
+| 31 | GET | `/tenants/{id}/users/{uid}/permissions` | 10 | Admin API key | WriteJSON |
+| 32 | GET | `/tenants/{id}/audit` | 10 | Admin API key | WriteJSON |
 | — | GET | `/health` | 0 | None | WriteRaw |
 
 ---
@@ -116,6 +125,16 @@
 | Redis repos (6 ephemeral stores) | GTM | User: "Yes" (go-to-market) | Done |
 | Coverage restoration to 85% | GTM | User: "why coverage changed from 85 to 82?" | Done |
 | In-memory repos moved to cache/ | Refactor | Needed for proper test coverage | Done |
+| RBAC (roles + permissions in JWT) | 10 | User: "can I integrate RBAC for authorization" | Done |
+| Audit logging (25+ event types) | 10 | Production requirement | Done |
+| OpenTelemetry tracing middleware | 10 | User: "RBAC, Audit logging, OpenTelemetry tracing, mTLS" | Done |
+| mTLS for M2M communication | 10 | User: "mTLS for M2M" | Done |
+| Go SDK (embeddable library) | SDK | User: "can it be an SDK?" | Done |
+| Java SDK (authcore-java-sdk) | SDK | User: "this should be for java spring boot, .net also right?" | Done |
+| .NET SDK (authcore-dotnet-sdk) | SDK | User: "Yes all" | Done |
+| Node.js SDK (authcore-js) | SDK | User: "Yes all" | Done |
+| Python SDK (authcore-python) | SDK | User: "Yes all" | Done |
+| Spring Boot test client | Test | User: "create a client in java springboot for testing" | Done |
 
 ---
 
@@ -156,12 +175,12 @@
 
 | # | Item | Effort |
 |---|------|--------|
-| 17 | mTLS | Medium |
-| 18 | OpenTelemetry traces | Medium |
+| ~~17~~ | ~~mTLS~~ | ~~Medium~~ | **Done** — mTLS middleware for client certificate verification |
+| ~~18~~ | ~~OpenTelemetry traces~~ | ~~Medium~~ | **Done** — Tracing middleware with distributed trace context |
 | 19 | LDAP integration | Medium |
 | 20 | Admin UI (separate SPA) | Large |
 | 21 | JWE (encrypted tokens) | Medium |
-| 22 | Audit logging | Medium |
+| ~~22~~ | ~~Audit logging~~ | ~~Medium~~ | **Done** — 25+ event types, audit domain + repository + query API |
 | 23 | Security audit | External |
 
 ---
@@ -211,6 +230,7 @@
 | `AUTHCORE_SMS_ACCOUNT_ID` | (empty) | Module 9 |
 | `AUTHCORE_SMS_AUTH_TOKEN` | (empty) | Module 9 |
 | `AUTHCORE_SMS_FROM_NUMBER` | (empty) | Module 9 |
+| `AUTHCORE_ENCRYPTION_KEY` | (empty) | Production Hardening |
 
 ---
 
@@ -227,6 +247,8 @@
 | 007 | `007_create_external_identities.sql` | external_identities | PH |
 | 008 | `008_create_mfa.sql` | totp_enrollments, mfa_challenges | PH |
 | 009 | `009_add_user_phone.sql` | users (ALTER) | 9 |
+| 010 | `010_create_rbac.sql` | roles, user_role_assignments | 10 |
+| 011 | `011_create_audit_events.sql` | audit_events | 10 |
 
 ---
 
@@ -250,3 +272,11 @@
 | 2026-03-28 | Encryption at rest: AES-256-GCM encryptor, AUTHCORE_ENCRYPTION_KEY config, EncryptIfConfigured/DecryptIfConfigured helpers |
 | 2026-03-28 | Email verification: auto-send OTP on register, VerificationSent field in register response |
 | 2026-03-28 | **All 8 go-to-market items complete** |
+| 2026-03-28 | RBAC: roles + permissions per tenant, wildcard matching, JWT claims enrichment, full CRUD API |
+| 2026-03-28 | Audit logging: 25+ event types, domain + in-memory repository + query API with filters |
+| 2026-03-28 | OpenTelemetry: tracing middleware with distributed trace context injection |
+| 2026-03-28 | mTLS: mutual TLS middleware for M2M client certificate verification |
+| 2026-03-28 | Go SDK: embeddable AuthCore as library (pkg/authcore), Register/Login/IssueTokens/VerifyJWT/MountRoutes |
+| 2026-03-28 | Wrapper SDKs: Java, .NET, Node.js, Python — typed clients in separate repositories |
+| 2026-03-28 | Spring Boot test client: OAuth2 resource server with JWT verification via JWKS |
+| 2026-03-26 | Documentation update: all 13 docs updated to reflect RBAC, audit, OTel, mTLS, SDKs |

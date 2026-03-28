@@ -40,6 +40,7 @@
                     │  user    tenant     │
                     │  jwks    discovery  │
                     │  mfa     social     │
+                    │  rbac    audit      │
                     │  provider           │
                     └─────────┬──────────┘
                               │
@@ -52,6 +53,7 @@
                     │  Token, Claims      │
                     │  KeyPair, MFA       │
                     │  Identity, OTP      │
+                    │  Role, AuditEvent   │
                     └─────────┬──────────┘
                               │
               ┌───────────────┼───────────────┐
@@ -86,6 +88,8 @@ Pure business logic. No I/O, no imports from adapter or application layers.
 | `identity` | IdentityProvider, ExternalIdentity, OAuthState | ProviderRepository, ExternalIdentityRepository, StateRepository, OAuthClient |
 | `mfa` | TOTPEnrollment, MFAChallenge, MFAPolicy | TOTPRepository, ChallengeRepository |
 | `otp` | OTP | Repository, EmailSender, SMSSender |
+| `rbac` | Role, UserRoleAssignment | RoleRepository, AssignmentRepository |
+| `audit` | Event | Repository |
 | `oidc` | DiscoveryDocument | — |
 | `shared` | — | TenantFromContext, WithTenant |
 
@@ -104,6 +108,8 @@ Use cases. Orchestrates domain entities via port interfaces.
 | `mfa` | EnrollTOTP, ConfirmTOTP, VerifyMFA, CreateChallenge, HasEnrolledMFA |
 | `social` | AuthorizeRedirect, HandleCallback |
 | `provider` | Create, Get, List, Delete |
+| `rbac` | CreateRole, GetRole, ListRoles, UpdateRole, DeleteRole, AssignRole, RevokeRole, GetUserPermissions, GetUserRoles |
+| `audit` | LogEvent, Query |
 
 ### Layer 3: Adapter (`internal/adapter/`)
 
@@ -111,14 +117,14 @@ Infrastructure implementations of domain ports.
 
 | Adapter | Implements |
 |---------|-----------|
-| `cache/` | 14 in-memory repositories (dev/fallback) |
+| `cache/` | 19 in-memory repositories (dev/fallback) |
 | `postgres/` | 7 Postgres repositories + migration runner |
-| `redis/` | 7 Redis repositories (session, code, device, blacklist, state, OTP) |
+| `redis/` | 7 Redis repositories (session, code, device, blacklist, state, OTP, challenge) |
 | `crypto/` | KeyGenerator, JWKConverter, JWTSigner, BcryptHasher, Encryptor |
 | `email/` | ConsoleSender (dev), SMTPSender (prod) |
 | `sms/` | ConsoleSender (dev), TwilioSender (prod) |
-| `http/handler/` | 14 HTTP handlers |
-| `http/middleware/` | CORS, TenantResolver, AdminAuth, RateLimiter |
+| `http/handler/` | 16 HTTP handlers (+ rbac, audit) |
+| `http/middleware/` | CORS, TenantResolver, AdminAuth, RateLimiter, Tracing (OTel), MTLS |
 | `http/oauth/` | HTTPOAuthClient (outbound to Google/GitHub/etc) |
 
 ## Data Flow
@@ -164,8 +170,8 @@ HTTP Request
 │   │  Postgres    │  │    Redis     │  │  In-Memory │ │
 │   │  (durable)   │  │  (ephemeral) │  │  (fallback)│ │
 │   │              │  │              │  │            │ │
-│   │  7 tables    │  │  6 stores    │  │  2 stores  │ │
-│   │  9 migrations│  │  TTL-based   │  │  TOTP/MFA  │ │
+│   │  9 tables    │  │  7 stores    │  │  2 stores  │ │
+│   │  11 migrations│  │  TTL-based   │  │  TOTP/MFA  │ │
 │   └─────────────┘  └──────────────┘  └────────────┘ │
 │                                                       │
 │   If Redis unavailable → all ephemeral falls back     │
@@ -210,6 +216,19 @@ HTTP Request
 │  Encryption: AES-256-GCM for secrets at rest  │
 │                                               │
 │  PKCE:       S256 (constant-time compare)     │
+│                                               │
+│  RBAC:       Per-tenant roles + permissions   │
+│              Wildcard matching (posts:*, *)    │
+│              Embedded in JWT claims            │
+│                                               │
+│  mTLS:       Client certificate verification  │
+│              for M2M communication             │
+│                                               │
+│  Audit:      25+ event types logged           │
+│              Query API with filters            │
+│                                               │
+│  Tracing:    OpenTelemetry middleware          │
+│              Distributed trace context         │
 │                                               │
 └──────────────────────────────────────────────┘
 ```

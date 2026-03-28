@@ -1,60 +1,88 @@
 # AuthCore Roadmap & Pending Items
 
-## Current State (as of 2026-03-27)
+## Current State (as of 2026-03-26)
 
-**Modules Complete:** 0–8 + Production Hardening
-**Stats:** ~170 Go files, 596 tests, 84.1% coverage, 22 endpoints, 33 packages
+**Modules Complete:** 0–10 + Production Hardening + SDK
+**Stats:** ~237 Go files, 720 tests, 85.0% coverage, 35+ endpoints, 40 packages
+
+---
+
+## Completed Items
+
+### Previously Critical — All Resolved
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | Remaining Postgres repo implementations | **Done** — client, user, refresh, provider, external identity repos |
+| 2 | Redis for ephemeral stores | **Done** — session, auth code, device code, blacklist, state, OTP |
+| 3 | Scope validation enforcement | **Done** — /authorize + /token validate scopes against client |
+| 4 | MFA enforcement in /authorize | **Done** — MFAPolicy on Tenant, challenge-based flow |
+| 5 | E2E tests | **Done** — golden path, Docker testcontainers + in-memory variants |
+
+### Previously High Priority — All Resolved
+
+| # | Item | Status |
+|---|------|--------|
+| 6 | Rate limiting | **Done** — 20 req/min per IP sliding window |
+| 7 | Encryption at rest | **Done** — AES-256-GCM with configurable key |
+| 8 | Email service + verification | **Done** — SMTP + console senders, auto-verify on register |
+| 9 | Password reset flow | **Done** — OTP-based password reset |
+
+### Previously Low Priority — Resolved
+
+| # | Item | Status |
+|---|------|--------|
+| 17 | mTLS | **Done** — Mutual TLS middleware for M2M |
+| 18 | OpenTelemetry | **Done** — Tracing middleware |
+| 22 | Audit logging | **Done** — 25+ event types, query API |
+
+### Additional Completed Work
+
+| Feature | Status |
+|---------|--------|
+| RBAC (roles + permissions in JWT) | **Done** — Full CRUD, wildcard permissions, JWT enrichment |
+| Go SDK (embeddable library) | **Done** — pkg/authcore with Register/Login/IssueTokens/VerifyJWT |
+| Wrapper SDKs (Java, .NET, Node.js, Python) | **Done** — Typed clients in separate repos |
+| Spring Boot test client | **Done** — OAuth2 resource server with JWKS verification |
 
 ---
 
 ## Pending Items by Priority
 
-### Critical — Blocks Production Deployment
-
-| # | Item | Effort | Description | Status |
-|---|------|--------|-------------|--------|
-| 1 | Remaining Postgres repo implementations | Medium | `setupPostgresRepos()` has TODOs — only JWK + tenant repos are real Postgres. Need: client, user, session, refresh, provider, external identity, TOTP | Migration SQL exists, repos need writing |
-| 2 | Redis for ephemeral stores | Medium | Auth codes, device codes, blacklist, state, sessions, MFA challenges should use Redis with TTL | In-memory works, not scalable |
-| 3 | Scope validation enforcement | Small | Scopes stored on client but never checked during token issuance | Domain exists |
-| 4 | MFA enforcement in /authorize | Small | `CreateChallenge` service exists, /authorize handler doesn't call it | Service exists |
-| 5 | E2E tests | Medium | Golden path: register → login → authorize → token → verify JWT via /jwks | Test infra exists |
-
-### High — Production Quality
+### High — Enterprise Features
 
 | # | Item | Effort | Description |
 |---|------|--------|-------------|
-| 6 | Rate limiting | Medium | `/login`, `/mfa/verify`, `/token` need brute-force protection |
-| 7 | Encryption at rest | Medium | TOTP secrets, provider client_secrets stored plaintext in DB |
-| 8 | Email service | Medium | Verification emails, password reset tokens |
-| 9 | Password reset flow | Medium | Forgot → token → reset |
 | 10 | SAML 2.0 | Large | Enterprise SSO — see [SAML analysis](#saml-20-analysis) below |
+| 11 | WebAuthn/FIDO2 (Module 7b) | Large | Hardware key / biometric MFA |
 
 ### Medium — Feature Parity
 
 | # | Item | Effort | Description |
 |---|------|--------|-------------|
-| 11 | WebAuthn/FIDO2 (Module 7b) | Large | Hardware key / biometric MFA |
 | 12 | ID token from social login | Small | Decode provider id_token (marked `// TODO`) |
 | 13 | Apple JWT client_secret | Medium | ES256-signed JWT per token exchange request |
 | 14 | Refresh token cleanup | Small | Expired/revoked tokens accumulate forever |
 | 15 | Key auto-rotation | Small | Currently manual via API |
-| 16 | OIDC /userinfo from access token | Small | Currently uses session token; should also accept JWT |
-| 17 | Admin CLI tool | Small | `authcore tenant create --domain example.com` |
-| 18 | CORS per-client | Small | Currently global; should be per-client whitelist |
+| 16 | Admin CLI tool | Small | `authcore tenant create --domain example.com` |
+| 17 | CORS per-client | Small | Currently global; should be per-client whitelist |
+| 18 | Postgres RBAC repos | Medium | Currently in-memory; need Postgres persistence |
+| 19 | Audit event auto-logging | Medium | Wire audit events into all services (currently manual) |
 
 ### Low — Nice to Have
 
 | # | Item | Effort | Description |
 |---|------|--------|-------------|
-| 19 | mTLS | Medium | Machine-to-machine TLS certificate auth |
-| 20 | OpenTelemetry | Medium | Logger trace hooks ready, SDK not wired |
-| 21 | JWE (encrypted tokens) | Medium | RFC 7516 |
-| 22 | Audit logging | Medium | Track admin actions, login events |
-| 23 | LDAP integration | Medium | Direct AD bind (see [LDAP analysis](#ldap-analysis)) |
-| 24 | Admin UI | Large | Separate SPA recommended (see [Admin UI analysis](#admin-ui-analysis)) |
-| 25 | Security audit | External | Zero production deployments, no external review |
-| 26 | Dynamic Client Registration (RFC 7591) | Medium | Clients can self-register |
-| 27 | Pushed Authorization Requests (PAR) | Medium | RFC 9126 |
+| 20 | LDAP integration | Medium | Direct AD bind (see [LDAP analysis](#ldap-analysis)) |
+| 21 | Admin UI (separate SPA) | Large | Separate companion recommended |
+| 22 | JWE (encrypted tokens) | Medium | RFC 7516 |
+| 23 | Security audit | External | Zero production deployments, no external review |
+| 24 | Dynamic Client Registration (RFC 7591) | Medium | Clients can self-register |
+| 25 | Pushed Authorization Requests (PAR) | Medium | RFC 9126 |
+| 26 | Security headers middleware | Small | HSTS, CSP, X-Content-Type-Options |
+| 27 | Hard delete for GDPR | Small | Cascade delete for right to erasure |
+| 28 | Data export endpoint | Small | GDPR Art. 15 compliance |
+| 29 | Secret backend (Vault/AWS Secrets Manager) | Medium | External secret management |
 
 ---
 
@@ -136,19 +164,10 @@
 | **C: Separate SPA** (`authcore-admin` repo) | 2-3 weeks | React dashboard calling management API | Yes — optional companion |
 | **D: Built-in UI** | 4-6 weeks | Serve HTML from same binary | **No** — breaks headless |
 
-**Why not built-in (Option D):**
-- Breaks the core "headless" design principle
-- Doubles the maintenance surface (Go backend + JS frontend)
-- Makes AuthCore "Keycloak but worse" — competing on UI is a losing battle
-- Admin UI needs its own auth, CSRF protection, CSP headers
-- AuthCore's differentiator is being lightweight; a UI adds weight
-
 **Recommended approach:**
 1. **Now:** Option B — build an admin CLI tool (small effort, high developer productivity)
 2. **Later:** Option C — separate `authcore-admin` React SPA (optional, open-source)
 3. **Never:** Option D — built-in UI contradicts the architecture
-
-This mirrors IdentityServer's approach: Duende sells the admin UI as a separate product. The core server stays clean.
 
 ---
 
@@ -156,42 +175,50 @@ This mirrors IdentityServer's approach: Duende sells the admin UI as a separate 
 
 ### For Local Development ✅
 - [x] In-memory storage
-- [x] All 22 endpoints functional
+- [x] All 35+ endpoints functional
 - [x] Register → Login → Authorize → Token → Verify JWT
 - [x] Social login flow (with configured provider)
 - [x] MFA TOTP enrollment and verification
+- [x] OTP login (email + SMS)
+- [x] RBAC role management
 - [x] Hot reload with `go run`
 
-### For Staging Deployment 🟡
-- [x] Postgres connection + auto-migrations
+### For Staging Deployment ✅
+- [x] Postgres connection + auto-migrations (11 SQL files)
+- [x] Redis for ephemeral stores (6 stores)
 - [x] CORS configured
 - [x] Admin API protected with API key
 - [x] Client enforcement on OAuth flows
-- [ ] Remaining Postgres repos (items 1-2 above)
-- [ ] Redis for ephemeral stores
-- [ ] Scope validation
-- [ ] E2E tests passing
+- [x] Scope validation
+- [x] MFA enforcement
+- [x] E2E tests passing
+- [x] Rate limiting (20 req/min)
+- [x] Encryption at rest (AES-256-GCM)
 
-### For Production Deployment 🔴
-- [ ] All staging items
-- [ ] Rate limiting
-- [ ] Encryption at rest
-- [ ] Email verification
-- [ ] Password reset
-- [ ] Security audit
+### For Production Deployment 🟡
+- [x] All staging items
+- [x] Rate limiting
+- [x] Encryption at rest
+- [x] Email verification
+- [x] Password reset
+- [x] Audit logging
+- [x] mTLS for M2M
+- [x] OpenTelemetry tracing
+- [ ] Security audit (external pen test)
 - [ ] Load testing
 - [ ] Monitoring (metrics, alerts)
 - [ ] Backup/restore procedures
 - [ ] Incident response playbook
+- [ ] Security headers (HSTS, CSP)
 
 ---
 
-## Implementation Priority (Recommended Order)
+## Implementation Priority (Recommended Next Steps)
 
 | Phase | Items | Gets you to |
 |-------|-------|-------------|
-| **Phase 1** (1 week) | Items 1-2: Postgres repos + Redis | Full persistence, horizontally scalable |
-| **Phase 2** (2-3 days) | Items 3-5: Scope, MFA enforcement, E2E tests | Feature-complete and tested |
-| **Phase 3** (1 week) | Items 6-9: Rate limiting, encryption, email, password reset | Production-grade security |
-| **Phase 4** (3-4 weeks) | Item 10: SAML 2.0 | Enterprise-ready |
-| **Phase 5** (2 weeks) | Items 11, 17: WebAuthn, Admin CLI | Feature parity |
+| **Phase 1** (3-4 weeks) | SAML 2.0 | Enterprise-ready |
+| **Phase 2** (2 weeks) | WebAuthn/FIDO2 | Full MFA coverage |
+| **Phase 3** (1 week) | Security headers, Postgres RBAC repos, audit auto-wiring | Production-hardened |
+| **Phase 4** (1 week) | Admin CLI, key auto-rotation, refresh cleanup | Operational tooling |
+| **Phase 5** (external) | Penetration test, load test | Certifiable |
