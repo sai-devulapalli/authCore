@@ -23,6 +23,8 @@ func NewAssignmentRepository(db *sql.DB, roleRepo rbac.RoleRepository) *Assignme
 var _ rbac.AssignmentRepository = (*AssignmentRepository)(nil)
 
 func (r *AssignmentRepository) Assign(ctx context.Context, userID, roleID, tenantID string) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `INSERT INTO user_role_assignments (user_id, role_id, tenant_id, assigned_at)
 		VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`
 
@@ -34,6 +36,8 @@ func (r *AssignmentRepository) Assign(ctx context.Context, userID, roleID, tenan
 }
 
 func (r *AssignmentRepository) Revoke(ctx context.Context, userID, roleID, tenantID string) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `DELETE FROM user_role_assignments WHERE user_id = $1 AND role_id = $2 AND tenant_id = $3`
 
 	result, err := r.db.ExecContext(ctx, query, userID, roleID, tenantID)
@@ -48,6 +52,8 @@ func (r *AssignmentRepository) Revoke(ctx context.Context, userID, roleID, tenan
 }
 
 func (r *AssignmentRepository) GetUserRoles(ctx context.Context, userID, tenantID string) ([]rbac.Role, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT r.id, r.tenant_id, r.name, r.description, r.permissions, r.created_at, r.updated_at
 		FROM roles r
 		JOIN user_role_assignments a ON r.id = a.role_id
@@ -81,6 +87,8 @@ func (r *AssignmentRepository) GetUserRoles(ctx context.Context, userID, tenantI
 }
 
 func (r *AssignmentRepository) GetRoleUsers(ctx context.Context, roleID, tenantID string) ([]string, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT user_id FROM user_role_assignments WHERE role_id = $1 AND tenant_id = $2`
 
 	rows, err := r.db.QueryContext(ctx, query, roleID, tenantID)

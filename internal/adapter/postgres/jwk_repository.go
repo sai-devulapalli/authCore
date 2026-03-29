@@ -23,6 +23,8 @@ var _ jwk.Repository = (*JWKRepository)(nil)
 
 // Store persists a new key pair.
 func (r *JWKRepository) Store(ctx context.Context, kp jwk.KeyPair) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `INSERT INTO jwk_pairs (id, tenant_id, key_type, algorithm, key_use, private_key, public_key, active, created_at, expires_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 
@@ -46,6 +48,8 @@ func (r *JWKRepository) Store(ctx context.Context, kp jwk.KeyPair) error {
 
 // GetActive returns the active key pair for a tenant.
 func (r *JWKRepository) GetActive(ctx context.Context, tenantID string) (jwk.KeyPair, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, tenant_id, key_type, algorithm, key_use, private_key, public_key, active, created_at, expires_at
 		FROM jwk_pairs WHERE tenant_id = $1 AND active = true ORDER BY created_at DESC LIMIT 1`
 
@@ -82,6 +86,8 @@ func (r *JWKRepository) GetActive(ctx context.Context, tenantID string) (jwk.Key
 
 // GetAllPublic returns all key pairs for a tenant (for JWKS endpoint).
 func (r *JWKRepository) GetAllPublic(ctx context.Context, tenantID string) ([]jwk.KeyPair, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, tenant_id, key_type, algorithm, key_use, public_key, active, created_at, expires_at
 		FROM jwk_pairs WHERE tenant_id = $1 ORDER BY created_at DESC`
 
@@ -127,6 +133,8 @@ func (r *JWKRepository) GetAllPublic(ctx context.Context, tenantID string) ([]jw
 
 // Deactivate marks a key pair as inactive and sets its expiry.
 func (r *JWKRepository) Deactivate(ctx context.Context, keyID string) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `UPDATE jwk_pairs SET active = false, expires_at = $1 WHERE id = $2`
 
 	now := time.Now().UTC()
@@ -148,6 +156,8 @@ func (r *JWKRepository) Deactivate(ctx context.Context, keyID string) error {
 
 // GetAllActiveTenantIDs returns distinct tenant IDs that have active key pairs.
 func (r *JWKRepository) GetAllActiveTenantIDs(ctx context.Context) ([]string, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT DISTINCT tenant_id FROM jwk_pairs WHERE active = true`
 
 	rows, err := r.db.QueryContext(ctx, query)
@@ -169,6 +179,8 @@ func (r *JWKRepository) GetAllActiveTenantIDs(ctx context.Context) ([]string, er
 
 // DeleteInactive removes inactive key pairs that expired before the given time.
 func (r *JWKRepository) DeleteInactive(ctx context.Context, olderThan time.Time) (int64, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `DELETE FROM jwk_pairs WHERE active = false AND expires_at IS NOT NULL AND expires_at < $1`
 	result, err := r.db.ExecContext(ctx, query, olderThan)
 	if err != nil {

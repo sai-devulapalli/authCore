@@ -17,9 +17,11 @@ type User struct {
 	PhoneVerified bool
 	Enabled       bool
 	TokenVersion  int
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	DeletedAt     *time.Time
+	ConsentGranted   bool       // whether user has granted data processing consent
+	ConsentTimestamp *time.Time // when consent was last granted/revoked
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	DeletedAt        *time.Time
 }
 
 // NewUser creates a validated User.

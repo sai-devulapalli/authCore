@@ -24,6 +24,8 @@ var _ audit.Repository = (*AuditRepository)(nil)
 
 // Store persists an audit event.
 func (r *AuditRepository) Store(ctx context.Context, event audit.Event) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	var detailsJSON []byte
 	if event.Details != nil {
 		var err error
@@ -57,6 +59,8 @@ func (r *AuditRepository) Store(ctx context.Context, event audit.Event) error {
 
 // Query retrieves audit events matching the filter.
 func (r *AuditRepository) Query(ctx context.Context, filter audit.QueryFilter) ([]audit.Event, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, tenant_id, actor_id, actor_type, action, resource_type, resource_id, ip_address, user_agent, details, timestamp
 		FROM audit_events WHERE 1=1`
 

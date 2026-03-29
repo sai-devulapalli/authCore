@@ -54,12 +54,16 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email, tenantID string)
 }
 
 func (r *UserRepository) GetByPhone(ctx context.Context, phone, tenantID string) (user.User, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, tenant_id, email, phone, password_hash, name, email_verified, phone_verified, enabled, token_version, created_at, updated_at, deleted_at
 		FROM users WHERE phone = $1 AND tenant_id = $2 AND phone != '' AND deleted_at IS NULL`
 	return r.scanUser(r.db.QueryRowContext(ctx, query, phone, tenantID))
 }
 
 func (r *UserRepository) Update(ctx context.Context, u user.User) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `UPDATE users SET email = $1, phone = $2, password_hash = $3, name = $4, email_verified = $5, phone_verified = $6, enabled = $7, updated_at = $8
 		WHERE id = $9 AND tenant_id = $10`
 	_, err := r.db.ExecContext(ctx, query,
@@ -73,6 +77,8 @@ func (r *UserRepository) Update(ctx context.Context, u user.User) error {
 }
 
 func (r *UserRepository) Delete(ctx context.Context, id, tenantID string) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `UPDATE users SET deleted_at = $1 WHERE id = $2 AND tenant_id = $3 AND deleted_at IS NULL`
 	result, err := r.db.ExecContext(ctx, query, time.Now().UTC(), id, tenantID)
 	if err != nil {
@@ -85,7 +91,24 @@ func (r *UserRepository) Delete(ctx context.Context, id, tenantID string) error 
 	return nil
 }
 
+func (r *UserRepository) HardDelete(ctx context.Context, id, tenantID string) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
+	query := `DELETE FROM users WHERE id = $1 AND tenant_id = $2`
+	result, err := r.db.ExecContext(ctx, query, id, tenantID)
+	if err != nil {
+		return apperrors.Wrap(apperrors.ErrInternal, "failed to hard delete user", err)
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return apperrors.New(apperrors.ErrNotFound, "user not found")
+	}
+	return nil
+}
+
 func (r *UserRepository) IncrementTokenVersion(ctx context.Context, id, tenantID string) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `UPDATE users SET token_version = token_version + 1, updated_at = $1 WHERE id = $2 AND tenant_id = $3 AND deleted_at IS NULL`
 	result, err := r.db.ExecContext(ctx, query, time.Now().UTC(), id, tenantID)
 	if err != nil {

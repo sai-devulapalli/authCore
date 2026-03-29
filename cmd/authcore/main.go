@@ -44,6 +44,7 @@ import (
 	domainaudit "github.com/authcore/internal/domain/audit"
 	samlsvc "github.com/authcore/internal/application/saml"
 	"github.com/authcore/internal/application/social"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	tenantsvc "github.com/authcore/internal/application/tenant"
 	usersvc "github.com/authcore/internal/application/user"
 	"github.com/authcore/internal/config"
@@ -388,6 +389,9 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 		}
 		tenantHandler.HandleTenant(w, r)
 	})))
+
+	// Prometheus metrics
+	mux.Handle("/metrics", promhttp.Handler())
 
 	// Health check
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

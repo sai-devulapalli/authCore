@@ -57,6 +57,8 @@ func (m *mockUserHandlerRepo) Update(_ context.Context, u domainuser.User) error
 	m.users[u.ID] = u
 	return nil
 }
+func (m *mockUserHandlerRepo) HardDelete(_ context.Context, _, _ string) error { return nil }
+
 func (m *mockUserHandlerRepo) Delete(_ context.Context, id, _ string) error {
 	delete(m.users, id)
 	return nil

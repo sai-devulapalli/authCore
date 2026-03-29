@@ -22,6 +22,8 @@ func NewClientRepository(db *sql.DB) *ClientRepository {
 var _ client.Repository = (*ClientRepository)(nil)
 
 func (r *ClientRepository) Create(ctx context.Context, c client.Client) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `INSERT INTO clients (id, tenant_id, client_name, client_type, secret_hash, redirect_uris, allowed_scopes, allowed_grant_types, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 
@@ -42,6 +44,8 @@ func (r *ClientRepository) Create(ctx context.Context, c client.Client) error {
 }
 
 func (r *ClientRepository) GetByID(ctx context.Context, id, tenantID string) (client.Client, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, tenant_id, client_name, client_type, secret_hash, redirect_uris, allowed_scopes, allowed_grant_types, created_at, updated_at, deleted_at
 		FROM clients WHERE id = $1 AND tenant_id = $2`
 
@@ -71,6 +75,8 @@ func (r *ClientRepository) GetByID(ctx context.Context, id, tenantID string) (cl
 }
 
 func (r *ClientRepository) Update(ctx context.Context, c client.Client) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `UPDATE clients SET client_name = $1, redirect_uris = $2, allowed_scopes = $3, updated_at = $4
 		WHERE id = $5 AND tenant_id = $6 AND deleted_at IS NULL`
 
@@ -89,6 +95,8 @@ func (r *ClientRepository) Update(ctx context.Context, c client.Client) error {
 }
 
 func (r *ClientRepository) Delete(ctx context.Context, id, tenantID string) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `UPDATE clients SET deleted_at = $1 WHERE id = $2 AND tenant_id = $3 AND deleted_at IS NULL`
 	result, err := r.db.ExecContext(ctx, query, time.Now().UTC(), id, tenantID)
 	if err != nil {
@@ -102,6 +110,8 @@ func (r *ClientRepository) Delete(ctx context.Context, id, tenantID string) erro
 }
 
 func (r *ClientRepository) List(ctx context.Context, tenantID string, offset, limit int) ([]client.Client, int, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	var total int
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM clients WHERE tenant_id = $1 AND deleted_at IS NULL`, tenantID).Scan(&total)
 	if err != nil {

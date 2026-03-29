@@ -23,6 +23,8 @@ var _ tenant.Repository = (*TenantRepository)(nil)
 
 // Create persists a new tenant.
 func (r *TenantRepository) Create(ctx context.Context, t tenant.Tenant) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `INSERT INTO tenants (id, domain, issuer, algorithm, active_key_id, token_version, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 
@@ -41,6 +43,8 @@ func (r *TenantRepository) Create(ctx context.Context, t tenant.Tenant) error {
 
 // GetByID returns a tenant by ID.
 func (r *TenantRepository) GetByID(ctx context.Context, id string) (tenant.Tenant, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, domain, issuer, algorithm, active_key_id, token_version, created_at, updated_at, deleted_at
 		FROM tenants WHERE id = $1`
 
@@ -49,6 +53,8 @@ func (r *TenantRepository) GetByID(ctx context.Context, id string) (tenant.Tenan
 
 // GetByDomain returns a tenant by domain (non-deleted only).
 func (r *TenantRepository) GetByDomain(ctx context.Context, domain string) (tenant.Tenant, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, domain, issuer, algorithm, active_key_id, token_version, created_at, updated_at, deleted_at
 		FROM tenants WHERE domain = $1 AND deleted_at IS NULL`
 
@@ -57,6 +63,8 @@ func (r *TenantRepository) GetByDomain(ctx context.Context, domain string) (tena
 
 // Update updates an existing tenant.
 func (r *TenantRepository) Update(ctx context.Context, t tenant.Tenant) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `UPDATE tenants SET domain = $1, issuer = $2, algorithm = $3, active_key_id = $4, updated_at = $5
 		WHERE id = $6 AND deleted_at IS NULL`
 
@@ -82,6 +90,8 @@ func (r *TenantRepository) Update(ctx context.Context, t tenant.Tenant) error {
 
 // Delete soft-deletes a tenant.
 func (r *TenantRepository) Delete(ctx context.Context, id string) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `UPDATE tenants SET deleted_at = $1 WHERE id = $2 AND deleted_at IS NULL`
 
 	result, err := r.db.ExecContext(ctx, query, time.Now().UTC(), id)
@@ -101,6 +111,8 @@ func (r *TenantRepository) Delete(ctx context.Context, id string) error {
 
 // IncrementTokenVersion atomically increments a tenant's token version.
 func (r *TenantRepository) IncrementTokenVersion(ctx context.Context, id string) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `UPDATE tenants SET token_version = token_version + 1, updated_at = $1 WHERE id = $2 AND deleted_at IS NULL`
 	result, err := r.db.ExecContext(ctx, query, time.Now().UTC(), id)
 	if err != nil {
@@ -118,6 +130,8 @@ func (r *TenantRepository) IncrementTokenVersion(ctx context.Context, id string)
 
 // List returns a paginated list of non-deleted tenants.
 func (r *TenantRepository) List(ctx context.Context, offset, limit int) ([]tenant.Tenant, int, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	countQuery := `SELECT COUNT(*) FROM tenants WHERE deleted_at IS NULL`
 	var total int
 	if err := r.db.QueryRowContext(ctx, countQuery).Scan(&total); err != nil {

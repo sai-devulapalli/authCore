@@ -23,6 +23,8 @@ func NewExternalIdentityRepository(db *sql.DB) *ExternalIdentityRepository {
 var _ identity.ExternalIdentityRepository = (*ExternalIdentityRepository)(nil)
 
 func (r *ExternalIdentityRepository) Create(ctx context.Context, ei identity.ExternalIdentity) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	profileJSON, _ := json.Marshal(ei.ProfileData)
 	query := `INSERT INTO external_identities (id, provider_id, external_subject, internal_subject, tenant_id, email, name, profile_data, linked_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
@@ -38,12 +40,16 @@ func (r *ExternalIdentityRepository) Create(ctx context.Context, ei identity.Ext
 }
 
 func (r *ExternalIdentityRepository) GetByExternalSubject(ctx context.Context, providerID, externalSubject string) (identity.ExternalIdentity, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, provider_id, external_subject, internal_subject, tenant_id, email, name, profile_data, linked_at, updated_at
 		FROM external_identities WHERE provider_id = $1 AND external_subject = $2`
 	return r.scanIdentity(r.db.QueryRowContext(ctx, query, providerID, externalSubject))
 }
 
 func (r *ExternalIdentityRepository) GetByInternalSubject(ctx context.Context, tenantID, internalSubject string) ([]identity.ExternalIdentity, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, provider_id, external_subject, internal_subject, tenant_id, email, name, profile_data, linked_at, updated_at
 		FROM external_identities WHERE tenant_id = $1 AND internal_subject = $2`
 
@@ -71,6 +77,8 @@ func (r *ExternalIdentityRepository) GetByInternalSubject(ctx context.Context, t
 }
 
 func (r *ExternalIdentityRepository) Update(ctx context.Context, ei identity.ExternalIdentity) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	profileJSON, _ := json.Marshal(ei.ProfileData)
 	query := `UPDATE external_identities SET email = $1, name = $2, profile_data = $3, updated_at = $4
 		WHERE id = $5`

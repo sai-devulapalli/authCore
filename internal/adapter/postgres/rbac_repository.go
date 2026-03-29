@@ -22,6 +22,8 @@ func NewRoleRepository(db *sql.DB) *RoleRepository {
 var _ rbac.RoleRepository = (*RoleRepository)(nil)
 
 func (r *RoleRepository) Create(ctx context.Context, role rbac.Role) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `INSERT INTO roles (id, tenant_id, name, description, permissions, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
@@ -36,18 +38,24 @@ func (r *RoleRepository) Create(ctx context.Context, role rbac.Role) error {
 }
 
 func (r *RoleRepository) GetByID(ctx context.Context, id, tenantID string) (rbac.Role, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, tenant_id, name, description, permissions, created_at, updated_at
 		FROM roles WHERE id = $1 AND tenant_id = $2`
 	return r.scanRole(r.db.QueryRowContext(ctx, query, id, tenantID))
 }
 
 func (r *RoleRepository) GetByName(ctx context.Context, name, tenantID string) (rbac.Role, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, tenant_id, name, description, permissions, created_at, updated_at
 		FROM roles WHERE name = $1 AND tenant_id = $2`
 	return r.scanRole(r.db.QueryRowContext(ctx, query, name, tenantID))
 }
 
 func (r *RoleRepository) List(ctx context.Context, tenantID string) ([]rbac.Role, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, tenant_id, name, description, permissions, created_at, updated_at
 		FROM roles WHERE tenant_id = $1`
 
@@ -72,6 +80,8 @@ func (r *RoleRepository) List(ctx context.Context, tenantID string) ([]rbac.Role
 }
 
 func (r *RoleRepository) Update(ctx context.Context, role rbac.Role) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `UPDATE roles SET name = $1, description = $2, permissions = $3, updated_at = $4
 		WHERE id = $5 AND tenant_id = $6`
 
@@ -90,6 +100,8 @@ func (r *RoleRepository) Update(ctx context.Context, role rbac.Role) error {
 }
 
 func (r *RoleRepository) Delete(ctx context.Context, id, tenantID string) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `DELETE FROM roles WHERE id = $1 AND tenant_id = $2`
 
 	result, err := r.db.ExecContext(ctx, query, id, tenantID)

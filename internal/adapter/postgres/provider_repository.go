@@ -23,6 +23,8 @@ func NewProviderRepository(db *sql.DB) *ProviderRepository {
 var _ identity.ProviderRepository = (*ProviderRepository)(nil)
 
 func (r *ProviderRepository) Create(ctx context.Context, p identity.IdentityProvider) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	extraJSON, _ := json.Marshal(p.ExtraConfig)
 	query := `INSERT INTO identity_providers (id, tenant_id, provider_type, client_id, client_secret, scopes, discovery_url, auth_url, token_url, userinfo_url, enabled, extra_config, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
@@ -39,18 +41,24 @@ func (r *ProviderRepository) Create(ctx context.Context, p identity.IdentityProv
 }
 
 func (r *ProviderRepository) GetByID(ctx context.Context, id, tenantID string) (identity.IdentityProvider, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, tenant_id, provider_type, client_id, client_secret, scopes, discovery_url, auth_url, token_url, userinfo_url, enabled, extra_config, created_at, updated_at
 		FROM identity_providers WHERE id = $1 AND tenant_id = $2`
 	return r.scanProvider(r.db.QueryRowContext(ctx, query, id, tenantID))
 }
 
 func (r *ProviderRepository) GetByType(ctx context.Context, tenantID string, pt identity.ProviderType) (identity.IdentityProvider, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, tenant_id, provider_type, client_id, client_secret, scopes, discovery_url, auth_url, token_url, userinfo_url, enabled, extra_config, created_at, updated_at
 		FROM identity_providers WHERE tenant_id = $1 AND provider_type = $2`
 	return r.scanProvider(r.db.QueryRowContext(ctx, query, tenantID, string(pt)))
 }
 
 func (r *ProviderRepository) List(ctx context.Context, tenantID string) ([]identity.IdentityProvider, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, tenant_id, provider_type, client_id, client_secret, scopes, discovery_url, auth_url, token_url, userinfo_url, enabled, extra_config, created_at, updated_at
 		FROM identity_providers WHERE tenant_id = $1`
 
@@ -72,6 +80,8 @@ func (r *ProviderRepository) List(ctx context.Context, tenantID string) ([]ident
 }
 
 func (r *ProviderRepository) Update(ctx context.Context, p identity.IdentityProvider) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	extraJSON, _ := json.Marshal(p.ExtraConfig)
 	query := `UPDATE identity_providers SET client_id = $1, client_secret = $2, scopes = $3, discovery_url = $4, auth_url = $5, token_url = $6, userinfo_url = $7, enabled = $8, extra_config = $9, updated_at = $10
 		WHERE id = $11 AND tenant_id = $12`
@@ -86,6 +96,8 @@ func (r *ProviderRepository) Update(ctx context.Context, p identity.IdentityProv
 }
 
 func (r *ProviderRepository) Delete(ctx context.Context, id, tenantID string) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `DELETE FROM identity_providers WHERE id = $1 AND tenant_id = $2`
 	result, err := r.db.ExecContext(ctx, query, id, tenantID)
 	if err != nil {

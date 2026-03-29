@@ -10,6 +10,7 @@ type Repository interface {
 	GetByPhone(ctx context.Context, phone, tenantID string) (User, error)
 	Update(ctx context.Context, u User) error
 	Delete(ctx context.Context, id, tenantID string) error
+	HardDelete(ctx context.Context, id, tenantID string) error // GDPR right to erasure
 	IncrementTokenVersion(ctx context.Context, id, tenantID string) error
 }
 

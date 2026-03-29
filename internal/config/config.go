@@ -33,6 +33,7 @@ type Config struct {
 	WebAuthnRPID      string            `env:"AUTHCORE_WEBAUTHN_RP_ID"      envDefault:"localhost"`
 	WebAuthnRPName    string            `env:"AUTHCORE_WEBAUTHN_RP_NAME"    envDefault:"AuthCore"`
 	WebAuthnRPOrigins string            `env:"AUTHCORE_WEBAUTHN_RP_ORIGINS" envDefault:"http://localhost:8080"`
+	Features          FeatureFlags      `envPrefix:""`
 }
 
 // TenantMode determines how tenants are resolved from incoming requests.
