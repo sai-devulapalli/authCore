@@ -1,7 +1,7 @@
 # AuthCore — Implementation Tracker
 
 > **Last updated:** 2026-03-29
-> **Stats:** ~249 files | 785 test functions | 131 E2E subtests | 83.4% coverage (83% threshold) | 39 endpoints | 42 packages
+> **Stats:** ~262 files | 791 test functions | 141 E2E subtests | 80%+ coverage | 46 endpoints | 45 packages
 
 ---
 
@@ -171,7 +171,7 @@
 | ~~6~~ | ~~Rate limiting~~ | ~~Medium~~ | **Done** — sliding window per IP, 20 req/min on /login, /token, /otp/verify, /mfa/verify |
 | ~~7~~ | ~~Encryption at rest~~ | ~~Medium~~ | **Done** — AES-256-GCM encryptor with AUTHCORE_ENCRYPTION_KEY config |
 | ~~8~~ | ~~Email verification on register~~ | ~~Small~~ | **Done** — auto-sends verification OTP on register, VerificationSent in response |
-| 9 | SAML 2.0 | Large |
+| ~~9~~ | ~~SAML 2.0~~ | ~~Large~~ | **Done** — crewjam/saml library, 3 endpoints (/saml/metadata, /saml/sso, /saml/acs), Okta/Azure AD/ADFS support |
 
 ### Medium Priority
 
@@ -185,8 +185,11 @@
 | 15 | Admin CLI tool | Small | `authcore tenant create --domain example.com` |
 | 16 | SQL Server repository implementations | Medium | |
 | 17 | CORS per-client | Small | Currently global; should be per-client redirect origin whitelist |
-| 18 | Postgres RBAC repos | Medium | Roles + assignments currently in-memory; need Postgres persistence |
-| 19 | Audit event auto-wiring | Medium | Wire `auditSvc.Log()` into all application services (currently zero calls wired) |
+| ~~18~~ | ~~Postgres RBAC repos~~ | ~~Medium~~ | **Done** — PostgresRoleRepository + PostgresAssignmentRepository |
+| ~~19~~ | ~~Audit event auto-wiring~~ | ~~Medium~~ | **Done** — 19 events across 6 services, fire-and-forget, Postgres audit repo |
+| ~~20~~ | ~~Token versioning~~ | ~~Small~~ | **Done** — TokenVersion on User/Tenant/Client, introspect comparison |
+| ~~21~~ | ~~Admin auth model~~ | ~~Medium~~ | **Done** — JWT-based, 4 roles (super_admin/tenant_admin/readonly/auditor), bootstrap + login |
+| ~~22~~ | ~~DB tenant isolation (RLS)~~ | ~~Medium~~ | **Done** — Postgres RLS on 12 tables, FORCE ROW LEVEL SECURITY |
 
 ### Low Priority
 

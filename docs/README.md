@@ -749,16 +749,19 @@ make clean           # Remove build artifacts
 - Apple Sign In JWT client_secret generation (ES256)
 - Rate limiting (20 req/min per IP sliding window on auth endpoints)
 - Encryption at rest (AES-256-GCM with configurable key)
-- Audit logging (25+ event types with query API)
+- Audit logging (25+ event types, auto-wired into all services, query API)
+- Token versioning for instant revocation (user/tenant level)
+- SAML 2.0 Service Provider (Okta, Azure AD, ADFS)
+- JWT-based admin auth with roles (super_admin, tenant_admin, readonly, auditor)
+- Postgres Row-Level Security (RLS) on all tenant-scoped tables
 - OpenTelemetry tracing middleware
 - mTLS for M2M client certificate verification
 - CORS middleware with configurable origins
-- Admin API authentication (API key)
-- Postgres (7 repos) + Redis (7 repos) + in-memory fallback
-- Auto-migration runner (12 SQL files)
+- Postgres (10 repos) + Redis (7 repos) + in-memory fallback
+- Auto-migration runner (15 SQL files)
 - Structured logging with environment-aware levels
 - Docker deployment (~15MB image)
-- E2E tests (131 subtests: auth flows, RBAC, MFA, multi-tenant isolation, OIDC, CORS)
+- E2E tests (141 subtests: auth flows, RBAC, MFA, SAML, admin auth, multi-tenant, OIDC)
 - Go SDK (embeddable library)
 - Wrapper SDKs: Java, .NET, Node.js, Python
 
@@ -768,14 +771,8 @@ See [ROADMAP.md](ROADMAP.md) for the full tiered implementation plan.
 
 | Priority | Item | Description |
 |----------|------|-------------|
-| **Tier 1** | Token versioning | Instant revocation via version field on user/tenant |
-| **Tier 1** | DB tenant isolation (RLS) | Postgres row-level security policies |
 | **Tier 1** | Multi-level rate limiting | Per-IP, per-tenant, per-endpoint + Redis backend |
-| **Tier 1** | Admin auth model | Replace API key with JWT-based admin roles |
-| **Tier 2** | SAML 2.0 | Enterprise SSO requirement |
 | **Tier 2** | SCIM | User provisioning (RFC 7644) |
-| Medium | Postgres RBAC repos | Currently in-memory; need Postgres persistence |
-| Medium | Audit event auto-wiring | Wire audit events into all services (currently zero calls wired) |
 | Medium | CORS per-client | Currently global; should be per-client whitelist |
 | Medium | Admin CLI tool | `authcore tenant create --domain example.com` |
 | Medium | Security headers | HSTS, CSP, X-Content-Type-Options |
@@ -785,6 +782,15 @@ See [ROADMAP.md](ROADMAP.md) for the full tiered implementation plan.
 | Low | LDAP | Direct AD bind (Azure AD OIDC covers most) |
 | Low | JWE (encrypted tokens) | RFC 7516 |
 | External | Security audit | Penetration test ($5K-30K) |
+
+### Recently Completed (GTM Items)
+
+- Token versioning (instant revocation via version field)
+- DB tenant isolation (Postgres RLS on 12 tables)
+- Admin auth model (JWT-based, 4 roles, bootstrap/login)
+- SAML 2.0 (crewjam/saml, 3 endpoints, Okta/Azure AD support)
+- Postgres RBAC repos (persistent roles + assignments)
+- Audit event auto-wiring (19 events across 6 services)
 
 ### Standards Compliance
 
@@ -802,7 +808,7 @@ See [ROADMAP.md](ROADMAP.md) for the full tiered implementation plan.
 | JWT (RFC 7519) | Implemented (RS256, ES256) |
 | OIDC UserInfo (RFC 5765) | Implemented |
 | WebAuthn / FIDO2 | Implemented |
-| SAML 2.0 | Not implemented |
+| SAML 2.0 | Implemented (SP mode) |
 | JWE (RFC 7516) | Not implemented |
 
 ---
