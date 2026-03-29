@@ -1,224 +1,321 @@
-# AuthCore Roadmap & Pending Items
+# AuthCore — Product Roadmap
 
-## Current State (as of 2026-03-26)
-
-**Modules Complete:** 0–10 + Production Hardening + SDK
-**Stats:** ~237 Go files, 720 tests, 85.0% coverage, 35+ endpoints, 40 packages
+> **Last updated:** 2026-03-29
+> **Current state:** 249 files | 785 tests | 131 E2E subtests | 83.4% coverage | 39 endpoints | 42 packages
 
 ---
 
-## Completed Items
+## Overview
 
-### Previously Critical — All Resolved
-
-| # | Item | Status |
-|---|------|--------|
-| 1 | Remaining Postgres repo implementations | **Done** — client, user, refresh, provider, external identity repos |
-| 2 | Redis for ephemeral stores | **Done** — session, auth code, device code, blacklist, state, OTP |
-| 3 | Scope validation enforcement | **Done** — /authorize + /token validate scopes against client |
-| 4 | MFA enforcement in /authorize | **Done** — MFAPolicy on Tenant, challenge-based flow |
-| 5 | E2E tests | **Done** — golden path, Docker testcontainers + in-memory variants |
-
-### Previously High Priority — All Resolved
-
-| # | Item | Status |
-|---|------|--------|
-| 6 | Rate limiting | **Done** — 20 req/min per IP sliding window |
-| 7 | Encryption at rest | **Done** — AES-256-GCM with configurable key |
-| 8 | Email service + verification | **Done** — SMTP + console senders, auto-verify on register |
-| 9 | Password reset flow | **Done** — OTP-based password reset |
-
-### Previously Low Priority — Resolved
-
-| # | Item | Status |
-|---|------|--------|
-| 17 | mTLS | **Done** — Mutual TLS middleware for M2M |
-| 18 | OpenTelemetry | **Done** — Tracing middleware |
-| 22 | Audit logging | **Done** — 25+ event types, query API |
-
-### Additional Completed Work
-
-| Feature | Status |
-|---------|--------|
-| RBAC (roles + permissions in JWT) | **Done** — Full CRUD, wildcard permissions, JWT enrichment |
-| Go SDK (embeddable library) | **Done** — pkg/authcore with Register/Login/IssueTokens/VerifyJWT |
-| Wrapper SDKs (Java, .NET, Node.js, Python) | **Done** — Typed clients in separate repos |
-| Spring Boot test client | **Done** — OAuth2 resource server with JWKS verification |
+```
+┌─────────────────────────────────────────────────────────────┐
+│  🔴 TIER 1 — Must Do NOW (security + operational maturity) │
+│  Token versioning, DB tenant isolation, rate limiting,      │
+│  admin auth model                                           │
+├─────────────────────────────────────────────────────────────┤
+│  🟠 TIER 2 — Unlock Enterprise (compliance + provisioning) │
+│  SAML 2.0, SCIM, Admin UI                                  │
+├─────────────────────────────────────────────────────────────┤
+│  🟢 TIER 3 — Differentiate (advanced security + platform)  │
+│  Policy engine (ABAC), webhooks, risk-based auth            │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Pending Items by Priority
+## 🔴 Tier 1: Must Do NOW
 
-### High — Enterprise Features
+### 1.1 Token Versioning (Instant Revocation)
 
-| # | Item | Effort | Description |
-|---|------|--------|-------------|
-| 10 | SAML 2.0 | Large | Enterprise SSO — see [SAML analysis](#saml-20-analysis) below |
-| 11 | WebAuthn/FIDO2 (Module 7b) | Large | Hardware key / biometric MFA |
+**Problem:** Revoking all tokens for a user/tenant requires waiting for JWT expiry (1h). No way to force-invalidate all tokens issued before a specific point.
 
-### Medium — Feature Parity
+**Current state:** JTI-based blacklist (in-memory + Redis). Refresh token family revocation works. No version/generation field for bulk invalidation.
 
-| # | Item | Effort | Description |
-|---|------|--------|-------------|
-| 12 | ID token from social login | Small | Decode provider id_token (marked `// TODO`) |
-| 13 | Apple JWT client_secret | Medium | ES256-signed JWT per token exchange request |
-| 14 | Refresh token cleanup | Small | Expired/revoked tokens accumulate forever |
-| 15 | Key auto-rotation | Small | Currently manual via API |
-| 16 | Admin CLI tool | Small | `authcore tenant create --domain example.com` |
-| 17 | CORS per-client | Small | Currently global; should be per-client whitelist |
-| 18 | Postgres RBAC repos | Medium | Currently in-memory; need Postgres persistence |
-| 19 | Audit event auto-logging | Medium | Wire audit events into all services (currently manual) |
+**Design:**
 
-### Low — Nice to Have
+| Component | Change |
+|-----------|--------|
+| `domain/token/token.go` | Add `TokenVersion int` to Claims |
+| `domain/user/user.go` | Add `TokenVersion int` to User |
+| `domain/tenant/tenant.go` | Add `TokenVersion int` to Tenant |
+| `domain/client/client.go` | Add `TokenVersion int` to Client |
+| Postgres migration | `ALTER TABLE` add `token_version INTEGER DEFAULT 1` |
+| `application/auth/service.go` | Include `tv` claim in JWTs; on introspect compare JWT `tv` vs current entity version |
+| Handler | `POST /tenants/{tid}/users/{uid}/revoke-tokens` — increments user token_version |
+| Handler | `POST /tenants/{tid}/revoke-tokens` — increments tenant token_version |
 
-| # | Item | Effort | Description |
-|---|------|--------|-------------|
-| 20 | LDAP integration | Medium | Direct AD bind (see [LDAP analysis](#ldap-analysis)) |
-| 21 | Admin UI (separate SPA) | Large | Separate companion recommended |
-| 22 | JWE (encrypted tokens) | Medium | RFC 7516 |
-| 23 | Security audit | External | Zero production deployments, no external review |
-| 24 | Dynamic Client Registration (RFC 7591) | Medium | Clients can self-register |
-| 25 | Pushed Authorization Requests (PAR) | Medium | RFC 9126 |
-| 26 | Security headers middleware | Small | HSTS, CSP, X-Content-Type-Options |
-| 27 | Hard delete for GDPR | Small | Cascade delete for right to erasure |
-| 28 | Data export endpoint | Small | GDPR Art. 15 compliance |
-| 29 | Secret backend (Vault/AWS Secrets Manager) | Medium | External secret management |
+**Revocation flows:**
+- **Revoke all user tokens:** Increment `user.TokenVersion` → JWTs with old `tv` rejected
+- **Revoke all tenant tokens:** Increment `tenant.TokenVersion` → entire tenant invalidated
+- **Revoke single token:** Existing JTI blacklist (unchanged)
+
+**Effort:** Small (1-2 days) | **Files:** ~8 modified, 1 migration
 
 ---
 
-## Feature Analysis: SAML, LDAP, Admin UI
+### 1.2 Database-Level Tenant Isolation (Row-Level Security)
 
-### SAML 2.0 Analysis
+**Problem:** Tenant isolation is application-only (`WHERE tenant_id = $N`). A missed query or SQL injection = cross-tenant data leak.
 
-**Verdict: Build it.** Enterprise blocker — banks, hospitals, government require SAML.
+**Current state:** `tenant_id` on all tables. Every query includes it. But no Postgres RLS policies.
 
-**What it requires:**
-- XML signing/verification (`encoding/xml` + `crypto/x509`)
-- SAML metadata endpoint (`GET /saml/metadata`)
-- SAML SSO endpoint (`GET /saml/sso` — receives AuthnRequest)
-- SAML ACS endpoint (`POST /saml/acs` — receives Response/Assertion)
-- Assertion builder (XML → sign → base64 → POST/redirect binding)
-- SP-initiated and IdP-initiated flows
-- Certificate management per tenant
-- Recommended library: `github.com/crewjam/saml`
+**Design:**
 
-**Effort:** 3-4 weeks, ~30 new files
+```sql
+-- Per table (users, clients, refresh_tokens, roles, etc.)
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_users ON users
+    USING (tenant_id = current_setting('app.tenant_id', true))
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
+```
 
-**Pros:**
-- #1 enterprise blocker — without SAML, AuthCore is rejected by enterprise procurement
-- Original spec requirement
-- Competitive parity with Keycloak and Cognito
-- Reuses existing tenant isolation and key management
+| Component | Change |
+|-----------|--------|
+| Migration `013_enable_rls.sql` | Enable RLS + create policies on all 10 tenant-scoped tables |
+| All Postgres repos | `SET LOCAL app.tenant_id = $1` before queries |
+| Connection pool | `RESET app.tenant_id` per transaction |
+| Migration runner | Uses superuser role (bypasses RLS) |
 
-**Cons:**
-- XML complexity — canonicalization (C14N) and signature wrapping attacks
-- Large attack surface (XXE, XML injection)
-- SAML spec is massive with endless edge cases
-- Declining protocol (new integrations prefer OIDC)
-- Testing requires real SAML SPs (Salesforce, Workday)
+**Tables requiring RLS:** users, clients, refresh_tokens, identity_providers, external_identities, roles, user_role_assignments, audit_events, webauthn_credentials
 
-**Recommendation:** Use `crewjam/saml` library rather than implementing from scratch. Focus on SP-initiated flow first (most common). IdP-initiated can come later.
+**Effort:** Medium (3-5 days) | **Files:** 1 migration, ~7 repos modified
 
 ---
 
-### LDAP Analysis
+### 1.3 Multi-Level Rate Limiting
 
-**Verdict: Skip for now.** Generic OIDC provider covers Azure AD, which handles 90% of LDAP use cases.
+**Problem:** Single-level in-memory rate limiter. Doesn't scale, wrong HTTP status (400 not 429), no per-tenant or per-user limits.
 
-**What it requires:**
-- LDAP client adapter (bind, search, authenticate)
-- User federation: sync LDAP users → AuthCore, or passthrough auth
-- Group/role mapping from LDAP attributes
-- Connection pooling, TLS/STARTTLS
-- Config per tenant (LDAP URL, bind DN, search base, attribute mapping)
-- Library: `github.com/go-ldap/ldap/v3`
+**Current state:** Sliding window per IP, 20 req/min, in-memory only. Applied to /login, /token, /otp/verify, /mfa/verify.
 
-**Effort:** 1-2 weeks
+**Design — Rate limit tiers:**
 
-**Pros:**
-- Active Directory is still #1 corporate directory
-- No user migration needed — authenticate against existing LDAP
-- Fits headless model (backend protocol, no UI)
+| Tier | Scope | Limit | Window | Endpoints |
+|------|-------|-------|--------|-----------|
+| Auth | Per IP | 20/min | 1 min | /login, /token, /mfa/verify, /otp/verify |
+| Registration | Per IP | 5/min | 1 min | /register |
+| API | Per tenant | 1000/min | 1 min | All tenant-scoped |
+| Admin | Per API key | 100/min | 1 min | /tenants/* management |
+| Global | Per IP | 200/min | 1 min | All (backstop) |
 
-**Cons:**
-- Niche and shrinking — new orgs use Azure AD (OIDC), not raw LDAP
-- AuthCore already supports Generic OIDC — Azure AD exposes OIDC endpoints
-- LDAP connections are stateful (pooling, reconnection, timeouts)
-- Every LDAP deployment has custom schema — mapping is never clean
-- Security surface: LDAP injection, plaintext bind credentials
+| Component | Change |
+|-----------|--------|
+| `middleware/ratelimit.go` | Refactor for multi-tier support |
+| `adapter/redis/ratelimit.go` | New — Redis `INCR` + `EXPIRE` for distributed limiting |
+| `config/config.go` | Add `AUTHCORE_RATE_LIMIT_*` env vars |
+| Response | HTTP 429 with `Retry-After` header |
 
-**Recommendation:** Only build on specific customer demand. For most cases, configure Azure AD as a Generic OIDC provider instead.
+**Fallback:** Redis unavailable → in-memory (current behavior).
 
----
-
-### Admin UI Analysis
-
-**Verdict: Don't build built-in. Consider separate companion project.**
-
-**Three options:**
-
-| Option | Effort | Description | Fits AuthCore? |
-|--------|--------|-------------|---------------|
-| **A: API-only** (current) | Done | Developers use curl/Postman | Yes — headless philosophy |
-| **B: Admin CLI** | 1 week | `authcore tenant create --domain example.com` | Yes — stays headless |
-| **C: Separate SPA** (`authcore-admin` repo) | 2-3 weeks | React dashboard calling management API | Yes — optional companion |
-| **D: Built-in UI** | 4-6 weeks | Serve HTML from same binary | **No** — breaks headless |
-
-**Recommended approach:**
-1. **Now:** Option B — build an admin CLI tool (small effort, high developer productivity)
-2. **Later:** Option C — separate `authcore-admin` React SPA (optional, open-source)
-3. **Never:** Option D — built-in UI contradicts the architecture
+**Effort:** Medium (3-4 days) | **Files:** ~5 modified/created
 
 ---
 
-## Deployment Readiness Checklist
+### 1.4 Admin Auth Model (Replace API Key)
 
-### For Local Development ✅
-- [x] In-memory storage
-- [x] All 35+ endpoints functional
-- [x] Register → Login → Authorize → Token → Verify JWT
-- [x] Social login flow (with configured provider)
-- [x] MFA TOTP enrollment and verification
-- [x] OTP login (email + SMS)
-- [x] RBAC role management
-- [x] Hot reload with `go run`
+**Problem:** Single shared API key, no scoping, no expiry, no roles, no audit trail.
 
-### For Staging Deployment ✅
-- [x] Postgres connection + auto-migrations (11 SQL files)
-- [x] Redis for ephemeral stores (6 stores)
-- [x] CORS configured
-- [x] Admin API protected with API key
-- [x] Client enforcement on OAuth flows
-- [x] Scope validation
-- [x] MFA enforcement
-- [x] E2E tests passing
-- [x] Rate limiting (20 req/min)
-- [x] Encryption at rest (AES-256-GCM)
+**Design — Admin roles:**
 
-### For Production Deployment 🟡
-- [x] All staging items
-- [x] Rate limiting
-- [x] Encryption at rest
-- [x] Email verification
-- [x] Password reset
-- [x] Audit logging
-- [x] mTLS for M2M
-- [x] OpenTelemetry tracing
-- [ ] Security audit (external pen test)
-- [ ] Load testing
-- [ ] Monitoring (metrics, alerts)
-- [ ] Backup/restore procedures
-- [ ] Incident response playbook
-- [ ] Security headers (HSTS, CSP)
+| Role | Permissions |
+|------|-------------|
+| `super_admin` | Full access to all tenants |
+| `tenant_admin` | Scoped to specific tenant(s) |
+| `readonly` | GET-only |
+| `auditor` | Audit logs only |
+
+**Auth flow:**
+```
+1. Bootstrap: POST /admin/bootstrap { email, password }
+   (only works if no admins exist, uses AUTHCORE_ADMIN_API_KEY as bootstrap secret)
+
+2. Login: POST /admin/login { email, password } → admin JWT (1h)
+   Claims: { sub, role, tenant_ids, permissions, exp }
+
+3. API calls: Authorization: Bearer <admin-jwt>
+
+4. Backward compat: X-API-Key still works → treated as super_admin
+```
+
+| Component | Change |
+|-----------|--------|
+| `domain/admin/` | New — AdminUser, AdminSession entities |
+| `application/admin/service.go` | New — Bootstrap, Login, CRUD |
+| `adapter/postgres/migrations/014_create_admin_users.sql` | New table |
+| `middleware/admin_auth.go` | Support API key OR admin JWT |
+| `handler/admin.go` | New — /admin/bootstrap, /admin/login, /admin/users |
+
+**Effort:** Medium-Large (4-5 days) | **Files:** ~12 new, ~3 modified
 
 ---
 
-## Implementation Priority (Recommended Next Steps)
+## 🟠 Tier 2: Unlock Enterprise
 
-| Phase | Items | Gets you to |
-|-------|-------|-------------|
-| **Phase 1** (3-4 weeks) | SAML 2.0 | Enterprise-ready |
-| **Phase 2** (2 weeks) | WebAuthn/FIDO2 | Full MFA coverage |
-| **Phase 3** (1 week) | Security headers, Postgres RBAC repos, audit auto-wiring | Production-hardened |
-| **Phase 4** (1 week) | Admin CLI, key auto-rotation, refresh cleanup | Operational tooling |
-| **Phase 5** (external) | Penetration test, load test | Certifiable |
+### 2.1 SAML 2.0
+
+**Problem:** Enterprise customers require SAML SSO. Without it, AuthCore is rejected by Okta/Azure AD shops.
+
+**Dependency:** `github.com/crewjam/saml`
+
+**Endpoints:**
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/saml/metadata` | SP metadata XML |
+| GET | `/saml/sso?provider={id}` | Redirect to IdP |
+| POST | `/saml/acs` | Assertion Consumer Service — validate response, link identity, issue code |
+
+**Flow:**
+```
+Admin configures IdP → User clicks SSO → Redirect to IdP
+→ IdP authenticates → POSTs SAML assertion to /saml/acs
+→ Validate XML signature → Extract NameID → Link identity → Issue auth code
+```
+
+**Effort:** Large (2-3 weeks) | **Files:** ~15 new, ~5 modified
+
+---
+
+### 2.2 SCIM (User Provisioning)
+
+**Problem:** Enterprise IdPs need to auto-provision/deprovision users. Without SCIM, user lifecycle is manual.
+
+**Endpoints (RFC 7644):**
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/scim/v2/Users` | List with filtering (`?filter=userName eq "..."`) |
+| POST | `/scim/v2/Users` | Create |
+| GET | `/scim/v2/Users/{id}` | Get |
+| PUT | `/scim/v2/Users/{id}` | Replace |
+| PATCH | `/scim/v2/Users/{id}` | Partial update |
+| DELETE | `/scim/v2/Users/{id}` | Deactivate |
+| GET | `/scim/v2/ServiceProviderConfig` | Capability discovery |
+| GET | `/scim/v2/Schemas` | Schema definitions |
+
+**Key change:** Add `List(ctx, tenantID, filter, limit, offset)` to user repository.
+
+**Effort:** Medium (1-2 weeks) | **Files:** ~10 new, ~4 modified
+
+---
+
+### 2.3 Admin UI
+
+**Status:** Separate repo `authcore-admin` created. Dashboard, Tenant/Client/Provider/Role CRUD, Audit viewer done.
+
+**Remaining:** User management page, SAML config form, SCIM status view, webhook management, CI/CD deployment.
+
+**Effort:** Ongoing (incremental)
+
+---
+
+## 🟢 Tier 3: Differentiate
+
+### 3.1 Policy Engine (ABAC)
+
+**Problem:** RBAC can't express "allow if user.department == resource.department AND time is business hours".
+
+**Design:** JSON-based policy rules evaluated at request time.
+
+```json
+{
+  "name": "department-access",
+  "effect": "allow",
+  "rules": [{
+    "subjects": { "department": "${user.department}" },
+    "resources": { "type": "document", "department": "${user.department}" },
+    "actions": ["read", "write"],
+    "conditions": { "time": { "after": "09:00", "before": "18:00" } }
+  }]
+}
+```
+
+**Options:** Custom JSON DSL (MVP) → CEL (`google/cel-go`) → Casbin if needed.
+
+**Effort:** Large (2-3 weeks) | **Files:** ~15 new
+
+---
+
+### 3.2 Event Streaming (Webhooks First)
+
+**Problem:** No way to notify external systems of auth events. Must poll audit API.
+
+**Design:**
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| POST | `/tenants/{tid}/webhooks` | Create subscription (URL, secret, event types) |
+| GET | `/tenants/{tid}/webhooks` | List subscriptions |
+| DELETE | `/tenants/{tid}/webhooks/{id}` | Delete |
+
+**Payload:** JSON event with HMAC-SHA256 signature in `X-AuthCore-Signature` header.
+
+**Delivery:** Background worker via Redis queue. Retry with exponential backoff (3 attempts).
+
+**Effort:** Medium (1-2 weeks) | **Files:** ~10 new, ~2 modified
+
+---
+
+### 3.3 Risk-Based Auth (Adaptive MFA)
+
+**Problem:** MFA is all-or-nothing. No way to trigger only when risk is elevated.
+
+**Risk signals:**
+
+| Signal | Weight | Description |
+|--------|--------|-------------|
+| New IP | +30 | Not seen in 30 days |
+| New device | +25 | User-Agent not seen before |
+| Impossible travel | +50 | >500km from last login in <1h |
+| Failed attempts | +20 | >3 failures in 10 min |
+| Off-hours | +10 | Outside typical active hours |
+| Known IP | -20 | Used >5 times successfully |
+
+**Decision matrix:**
+
+| Score | Action |
+|-------|--------|
+| 0-30 | Allow (no MFA) |
+| 31-60 | Step-up MFA |
+| 61-80 | MFA + email alert |
+| 81-100 | Block + admin alert |
+
+**Effort:** Large (2-3 weeks) | **Files:** ~12 new, ~3 modified
+
+---
+
+## Implementation Order
+
+```
+Phase 1 (Weeks 1-2):   Token versioning + Admin auth model
+Phase 2 (Weeks 2-3):   DB tenant isolation (RLS) + Multi-level rate limiting
+Phase 3 (Weeks 3-6):   SAML 2.0
+Phase 4 (Weeks 5-7):   SCIM + Webhooks (parallelizable with SAML)
+Phase 5 (Weeks 7-9):   Policy engine (ABAC)
+Phase 6 (Weeks 9-11):  Risk-based auth
+Admin UI:               Continuous (pages added as features ship)
+```
+
+## Dependency Graph
+
+```
+Token versioning ──→ Admin auth model ──→ SAML 2.0 ──→ SCIM
+                                                    ↗
+DB tenant isolation (RLS) ─────────────────────────
+
+Multi-level rate limiting ─── (independent) ───────
+
+Webhooks ──→ Risk-based auth (uses event signals)
+          ↗
+ABAC ────
+```
+
+## Estimated Total
+
+| Tier | Items | Effort |
+|------|-------|--------|
+| Tier 1 | 4 features | 2-3 weeks |
+| Tier 2 | 3 features | 4-6 weeks |
+| Tier 3 | 3 features | 5-8 weeks |
+| **Total** | **10 features** | **~11-17 weeks** |
