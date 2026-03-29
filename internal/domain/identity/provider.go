@@ -12,6 +12,7 @@ const (
 	ProviderApple     ProviderType = "apple"
 	ProviderOIDC      ProviderType = "oidc"
 	ProviderOAuth2    ProviderType = "oauth2"
+	ProviderSAML      ProviderType = "saml"
 )
 
 // IdentityProvider represents an external OAuth/OIDC identity provider.
@@ -41,7 +42,7 @@ func NewIdentityProvider(id, tenantID string, providerType ProviderType, clientI
 		return IdentityProvider{}, &ValidationError{Field: "tenant_id", Message: "must not be empty"}
 	}
 	if !isValidProviderType(providerType) {
-		return IdentityProvider{}, &ValidationError{Field: "provider_type", Message: "must be google, github, microsoft, apple, oidc, or oauth2"}
+		return IdentityProvider{}, &ValidationError{Field: "provider_type", Message: "must be google, github, microsoft, apple, oidc, oauth2, or saml"}
 	}
 	if clientID == "" {
 		return IdentityProvider{}, &ValidationError{Field: "client_id", Message: "must not be empty"}
@@ -64,7 +65,7 @@ func NewIdentityProvider(id, tenantID string, providerType ProviderType, clientI
 
 func isValidProviderType(pt ProviderType) bool {
 	switch pt {
-	case ProviderGoogle, ProviderGitHub, ProviderMicrosoft, ProviderApple, ProviderOIDC, ProviderOAuth2:
+	case ProviderGoogle, ProviderGitHub, ProviderMicrosoft, ProviderApple, ProviderOIDC, ProviderOAuth2, ProviderSAML:
 		return true
 	default:
 		return false

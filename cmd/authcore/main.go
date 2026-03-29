@@ -33,6 +33,7 @@ import (
 	rbacsvc "github.com/authcore/internal/application/rbac"
 	domainadmin "github.com/authcore/internal/domain/admin"
 	domainaudit "github.com/authcore/internal/domain/audit"
+	samlsvc "github.com/authcore/internal/application/saml"
 	"github.com/authcore/internal/application/social"
 	tenantsvc "github.com/authcore/internal/application/tenant"
 	usersvc "github.com/authcore/internal/application/user"
@@ -211,6 +212,8 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 	socialSvc := social.NewService(r.provider, r.externalID, r.state, oauthClient,
 		authSvc, cfg.Issuer+"/callback", log)
 
+	samlService := samlsvc.NewService(r.provider, r.externalID, r.state, authSvc, cfg.Issuer, log)
+
 	mfaService := mfasvc.NewService(r.totp, r.challenge, authSvc, log)
 	mfaService.WithAudit(auditService)
 	mfaService.WithWebAuthn(r.webauthn, cfg.WebAuthnRPID, cfg.WebAuthnRPName, strings.Split(cfg.WebAuthnRPOrigins, ","))
@@ -260,6 +263,7 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 	introspectHandler := handler.NewIntrospectHandler(authSvc)
 	clientHandler := handler.NewClientHandler(clientService)
 	socialHandler := handler.NewSocialHandler(socialSvc)
+	samlHandler := handler.NewSAMLHandler(samlService)
 	providerHandler := handler.NewProviderHandler(providerService)
 	mfaHandler := handler.NewMFAHandler(mfaService)
 	userHandler := handler.NewUserHandler(userService)
@@ -293,6 +297,12 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 
 	// Social login callback (no tenant middleware — state contains tenant info)
 	mux.HandleFunc("/callback", socialHandler.HandleCallback)
+
+	// SAML endpoints
+	mux.HandleFunc("/saml/metadata", samlHandler.HandleMetadata) // public
+	mux.Handle("/saml/sso",
+		tenantResolver.Middleware(http.HandlerFunc(samlHandler.HandleSSO))) // tenant-scoped
+	mux.HandleFunc("/saml/acs", samlHandler.HandleACS) // public (IdP posts here)
 
 	// MFA endpoints
 	mux.HandleFunc("/mfa/totp/enroll", mfaHandler.HandleEnroll)
