@@ -32,6 +32,8 @@ func NewRefreshTokenRepository(db *sql.DB) *RefreshTokenRepository {
 var _ token.RefreshTokenRepository = (*RefreshTokenRepository)(nil)
 
 func (r *RefreshTokenRepository) Store(ctx context.Context, rt token.RefreshToken) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `INSERT INTO refresh_tokens (id, token, client_id, subject, tenant_id, scope, family_id, expires_at, created_at, rotated)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (id) DO UPDATE SET rotated = EXCLUDED.rotated, revoked_at = EXCLUDED.revoked_at`
@@ -48,6 +50,8 @@ func (r *RefreshTokenRepository) Store(ctx context.Context, rt token.RefreshToke
 }
 
 func (r *RefreshTokenRepository) GetByToken(ctx context.Context, tok string) (token.RefreshToken, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, token, client_id, subject, tenant_id, scope, family_id, expires_at, created_at, revoked_at, rotated
 		FROM refresh_tokens WHERE token = $1`
 

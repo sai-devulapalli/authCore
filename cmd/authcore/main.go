@@ -402,8 +402,8 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 		})
 	})
 
-	// Wrap entire mux with tracing → CORS
-	return tracingMiddleware.Middleware(corsMiddleware.Middleware(mux))
+	// Wrap entire mux: request ID → security headers → tracing → CORS
+	return middleware.RequestID(middleware.SecurityHeaders(tracingMiddleware.Middleware(corsMiddleware.Middleware(mux))))
 }
 
 // connectDB opens and verifies a database connection, runs migrations.

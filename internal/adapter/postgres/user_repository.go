@@ -22,6 +22,8 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 var _ user.Repository = (*UserRepository)(nil)
 
 func (r *UserRepository) Create(ctx context.Context, u user.User) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `INSERT INTO users (id, tenant_id, email, phone, password_hash, name, email_verified, phone_verified, enabled, token_version, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
 
@@ -36,12 +38,16 @@ func (r *UserRepository) Create(ctx context.Context, u user.User) error {
 }
 
 func (r *UserRepository) GetByID(ctx context.Context, id, tenantID string) (user.User, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, tenant_id, email, phone, password_hash, name, email_verified, phone_verified, enabled, token_version, created_at, updated_at, deleted_at
 		FROM users WHERE id = $1 AND tenant_id = $2`
 	return r.scanUser(r.db.QueryRowContext(ctx, query, id, tenantID))
 }
 
 func (r *UserRepository) GetByEmail(ctx context.Context, email, tenantID string) (user.User, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
 	query := `SELECT id, tenant_id, email, phone, password_hash, name, email_verified, phone_verified, enabled, token_version, created_at, updated_at, deleted_at
 		FROM users WHERE email = $1 AND tenant_id = $2 AND deleted_at IS NULL`
 	return r.scanUser(r.db.QueryRowContext(ctx, query, email, tenantID))

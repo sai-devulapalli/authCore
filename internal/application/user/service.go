@@ -90,7 +90,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		return RegisterResponse{}, apperrors.Wrap(apperrors.ErrConflict, "registration failed", createErr)
 	}
 
-	s.logger.Info("user registered", "user_id", u.ID, "email", u.Email, "tenant_id", u.TenantID)
+	s.logger.Info("user registered", "user_id", u.ID, "tenant_id", u.TenantID)
 	if s.auditSvc != nil {
 		s.auditSvc.Log(ctx, req.TenantID, u.ID, "user", domainaudit.EventRegister, "user", u.ID, nil, nil)
 	}
