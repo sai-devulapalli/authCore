@@ -687,14 +687,56 @@ AuthCore is not the right choice for everyone. Here are the scenarios where you 
 
 ---
 
+### Compliance in Sidecar Mode
+
+When AuthCore runs as a **sidecar** (same pod/host as your app), compliance certifications are **your app's responsibility**, not AuthCore's:
+
+```
+┌──────────────────────────────────────┐
+│      Your App (SOC2/HIPAA certified) │
+│                                       │
+│  ┌──────────┐     ┌───────────────┐  │
+│  │ AuthCore │◄───►│ Your Service  │  │
+│  │ (sidecar)│     │               │  │
+│  └──────────┘     └───────────────┘  │
+│                                       │
+│  YOUR infrastructure = YOUR certs     │
+└──────────────────────────────────────┘
+```
+
+| Concern | Who owns it? | Why |
+|---------|-------------|-----|
+| SOC2/HIPAA certification | **Your app** | AuthCore is a component inside your certified infra |
+| TLS termination | **Your infra** | Load balancer/nginx handles TLS |
+| Encryption at rest | **Your DB** | RDS/EBS encryption — your config |
+| Penetration test | **Your app scope** | AuthCore tested as part of your pentest |
+| Network isolation | **Your infra** | VPC, security groups — your setup |
+| Backup/DR | **Your infra** | DB snapshots — your ops |
+
+AuthCore provides the **building blocks** your compliance auditor needs:
+- Audit logging (tamper-proof, 25+ events, auto-wired)
+- Encryption at rest (AES-256-GCM)
+- JWT signature verification (RS256/ES256)
+- Refresh token hashing (SHA-256)
+- Row-Level Security on all tenant tables
+- RBAC with JWT claims
+- Consent fields on User entity
+- GDPR right-to-erasure (HardDelete)
+- Admin auth with role-based access (super_admin, tenant_admin, readonly, auditor)
+
+**The "no compliance certifications" gap only applies if you sell AuthCore as a standalone SaaS (like Auth0). As a sidecar or embedded library, it inherits your app's compliance posture** — just like bcrypt, PostgreSQL, or any other library doesn't need separate certification.
+
+---
+
 ### Summary: Use AuthCore When...
 
 | Your situation | AuthCore? | Better alternative |
 |---------------|-----------|-------------------|
 | Building custom auth UX for SaaS | **Yes** | — |
+| Sidecar in your certified infrastructure | **Yes** | — (compliance is on your app) |
 | Need SAML IdP mode (not just SP) | No (SP only) | Keycloak |
 | Need login page in 1 hour | No | Auth0, Cognito |
-| Need SOC2/HIPAA compliance report | No | Cognito, Auth0 |
+| Need standalone SaaS with own SOC2 cert | No | Cognito, Auth0 |
 | No frontend developers on team | No | Keycloak |
 | Corporate LDAP/AD is source of truth | No | Keycloak |
 | All-Java or all-.NET shop wanting embedded auth | No | Spring Security, Duende |

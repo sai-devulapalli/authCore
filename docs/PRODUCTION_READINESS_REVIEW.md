@@ -239,24 +239,31 @@ Stateless HTTP server (any instance can handle any request). Postgres for persis
 
 ## 10. COMPLIANCE & HEALTHCARE-SPECIFIC
 
-### Gaps
+### Sidecar Compliance Model
+
+When deployed as a sidecar or embedded library, AuthCore **inherits your app's compliance posture**. SOC2/HIPAA certifications are your infrastructure's responsibility. AuthCore provides the building blocks auditors need.
+
+### What's Fixed
+
+| Item | Status |
+|------|--------|
+| ~~Audit logs not tamper-proof~~ | **FIXED** — migration 016 prevents UPDATE/DELETE on audit_events |
+| ~~No GDPR right-to-erasure~~ | **FIXED** — `HardDelete(id, tenantID)` on user repository |
+| ~~No consent management~~ | **FIXED** — `ConsentGranted` + `ConsentTimestamp` fields on User entity |
+
+### Remaining Gaps
 
 | Severity | Finding |
 |----------|---------|
-| **CRITICAL** | **Audit logs are NOT tamper-proof** — can be UPDATE'd or DELETE'd at DB level. No cryptographic signing, no append-only guarantee |
-| HIGH | **No GDPR right-to-erasure** — no endpoint to delete a user and all associated data |
-| HIGH | **No consent management** — no fields tracking patient consent for data processing |
-| HIGH | **PII not encrypted at field level** — email, phone stored in plaintext in Postgres |
-| MEDIUM | **No data retention policy enforcement** — audit events grow unbounded |
-| MEDIUM | **No de-identification** support for research/analytics use cases |
-| MEDIUM | **No audit log export** for compliance reporting |
+| HIGH | PII not encrypted at field level — email, phone in plaintext in Postgres |
+| MEDIUM | No data retention policy enforcement — audit events grow unbounded |
+| MEDIUM | No de-identification support for research/analytics |
+| MEDIUM | No audit log export for compliance reporting |
 
 ### Recommendation
-- **P0:** Make audit_events table append-only (REVOKE UPDATE, DELETE from app role)
-- P1: Add `DELETE /tenants/{tid}/users/{uid}` with cascade deletion
 - P1: Add field-level encryption for PII (email, phone)
 - P2: Implement data retention policies with automated enforcement
-- P2: Add consent tracking fields to user entity
+- P2: Add audit log CSV/JSON export endpoint
 
 ---
 

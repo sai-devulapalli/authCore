@@ -154,8 +154,8 @@
 | Admin Auth | JWT-based with 4 roles + API key (backward compat) | Username/password + 2FA | N/A | IAM policies |
 | Encryption at Rest | AES-256-GCM (configurable key) | Vault integration | DPAPI / Azure Key Vault | AWS KMS |
 | TLS Termination | Reverse proxy (nginx/traeger) | Built-in or reverse proxy | Host app | ACM + CloudFront |
-| Security Audit | **None** | Multiple CVEs addressed, active security team | Duende security advisories | AWS security compliance |
-| OWASP Compliance | Partial | Extensive | Partial | Certified (SOC2, HIPAA) |
+| Security Audit | None (inherits app's audit in sidecar mode) | Multiple CVEs addressed, active security team | Duende security advisories | AWS security compliance |
+| OWASP Compliance | Partial (sidecar inherits app's certs) | Extensive | Partial | Certified (SOC2, HIPAA) |
 | Content Security Policy | No | Yes | Custom | N/A |
 | User Enumeration Prevention | Yes (same error for all login failures) | Configurable | Custom | Yes |
 
@@ -268,9 +268,13 @@ AuthCore and Keycloak scale best cost-wise. Cognito becomes expensive at scale. 
 
 - You're **all-in on AWS** and want zero infrastructure management
 - You have a **small user base** (< 50K MAU free tier)
-- You need **SOC2/HIPAA compliance** with zero effort
+- You need a **standalone auth SaaS with its own SOC2/HIPAA certification**
 - You don't mind vendor lock-in
 - You don't need GitHub or Microsoft social login
+
+### A note on compliance
+
+AuthCore doesn't need its own SOC2/HIPAA certification when deployed as a **sidecar** or **embedded library**. It inherits your app's compliance posture — the same way bcrypt, PostgreSQL, or any other library doesn't need separate certification. AuthCore provides the building blocks auditors need (audit logs, encryption, RBAC, consent, GDPR erasure). The compliance gap only applies if you sell AuthCore as a standalone SaaS like Auth0.
 
 ---
 

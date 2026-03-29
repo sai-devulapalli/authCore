@@ -538,6 +538,19 @@ openssl rand -base64 24
 - [ ] DNS pointed to load balancer
 - [ ] TLS certificate provisioned (Let's Encrypt / ACM)
 
+### Compliance (Sidecar Mode)
+
+When running as a sidecar, compliance certifications (SOC2, HIPAA, PCI-DSS) are **your app's responsibility**. AuthCore inherits your infrastructure's compliance posture. AuthCore provides the building blocks auditors need:
+
+- [ ] Audit logging enabled (25+ event types, tamper-proof, auto-wired)
+- [ ] Encryption at rest configured (`AUTHCORE_ENCRYPTION_KEY`)
+- [ ] Refresh tokens hashed (SHA-256 — automatic)
+- [ ] JWT signature verification active (automatic)
+- [ ] Row-Level Security enabled on Postgres (migration 015)
+- [ ] Admin auth uses JWT with role-based access (not just API key)
+- [ ] Consent fields populated on user registration
+- [ ] GDPR right-to-erasure endpoint available (`HardDelete`)
+
 ### Operations
 
 - [ ] Log aggregation configured (stdout → CloudWatch / Datadog / ELK)
