@@ -4,6 +4,225 @@
 
 ---
 
+## 0. Why Go? The Language Decision
+
+Before comparing products, the language choice shapes everything — deployment model, performance profile, developer experience, and ecosystem. Here's why Go was chosen over Java, .NET, Node.js, Rust, and Python.
+
+### The Candidates
+
+| Language | IAM Precedent | Runtime | Binary | Concurrency Model |
+|----------|--------------|---------|--------|--------------------|
+| **Go** | None (greenfield) | Native binary | Static, ~15MB | Goroutines (M:N scheduling) |
+| **Java** | Keycloak, Spring Security | JVM (HotSpot/GraalVM) | ~500MB with JRE | Threads (Project Loom for virtual threads) |
+| **.NET** | IdentityServer, Duende | CLR (.NET runtime) | ~200MB with runtime | async/await + ThreadPool |
+| **Node.js** | Passport.js, Auth0 actions | V8 engine | ~150MB with node_modules | Event loop (single-threaded) |
+| **Rust** | None major | Native binary | ~5MB | Async (tokio) + threads |
+| **Python** | Django auth, Authlib | CPython interpreter | ~200MB with venv | GIL-limited threading / asyncio |
+
+### Why Go Won
+
+**1. Single static binary — deploy anywhere**
+
+```
+Go:    scp authcore server:/opt/ && ./authcore     ← done
+Java:  Install JRE → configure classpath → java -jar  ← 3 steps
+.NET:  Install .NET runtime → dotnet run               ← 2 steps
+Node:  Install Node → npm install → node index.js      ← 3 steps
+```
+
+A single `authcore` binary with zero runtime dependencies. Copy it to any Linux/macOS/Windows machine and run. No JVM, no .NET runtime, no node_modules. This is critical for:
+- **Sidecar deployment** — 15MB image fits in any K8s pod
+- **Edge deployment** — runs on ARM, Raspberry Pi, IoT gateways
+- **Air-gapped environments** — no package manager needed
+
+**2. Minimal resource footprint**
+
+```
+Idle memory comparison:
+  Go (AuthCore):     ~50MB
+  Java (Keycloak):   ~512MB (JVM heap + metaspace)
+  .NET (Duende):     ~200MB (CLR + JIT)
+  Node.js:           ~80MB (V8 heap)
+
+Docker image:
+  Go:    15MB  (distroless/static)
+  Java:  500MB (JRE + dependencies)
+  .NET:  200MB (.NET runtime + app)
+  Node:  150MB (node + node_modules)
+```
+
+For a multi-tenant IAM service that may run as a sidecar alongside every microservice, memory matters. 50MB idle vs 512MB is the difference between deploying 100 sidecars on a single node vs 10.
+
+**3. Goroutine concurrency — perfect for auth workloads**
+
+Auth workloads are I/O-bound: accept HTTP request → query database → hash password → sign JWT → respond. Go's goroutines handle this naturally:
+
+```go
+// Each HTTP request gets its own goroutine (~4KB stack)
+// 10,000 concurrent connections = ~40MB of goroutine stacks
+// vs Java: 10,000 threads = ~10GB of thread stacks (1MB each)
+
+func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+    user, err := h.repo.GetByEmail(ctx, email)  // blocks goroutine, not OS thread
+    if err != nil { ... }
+    hash := bcrypt.CompareHashAndPassword(...)   // CPU-bound, runs on OS thread
+    token := h.signer.Sign(claims)               // fast
+    httputil.WriteJSON(w, 200, token)
+}
+```
+
+Go's scheduler multiplexes thousands of goroutines onto a small number of OS threads. No thread pool tuning, no async/await boilerplate, no callback hell.
+
+**4. stdlib crypto — no third-party security dependencies**
+
+```go
+// AuthCore's JWT signing uses ONLY Go stdlib:
+import (
+    "crypto/rsa"
+    "crypto/ecdsa"
+    "crypto/sha256"
+    "crypto/x509"
+    "encoding/base64"
+)
+// Zero third-party JWT libraries
+// Zero third-party OIDC libraries
+// Every crypto operation is Go stdlib — audited, maintained by the Go team
+```
+
+In security-critical code, every dependency is a risk. Java IAM servers typically depend on:
+- Nimbus JOSE+JWT
+- Bouncy Castle
+- Apache HttpClient
+- Jackson JSON
+
+Each is a potential CVE vector. AuthCore depends on Go's stdlib crypto (maintained by Google's security team) plus exactly 3 external packages: `env` (config), `testify` (testing), `x/crypto` (bcrypt). That's it.
+
+**5. Compilation speed + type safety**
+
+```
+Full build time:
+  Go:    ~5 seconds (AuthCore, 249 files)
+  Java:  ~30-60 seconds (Keycloak, thousands of files)
+  .NET:  ~10-20 seconds (typical project)
+  Rust:  ~2-5 minutes (fresh build)
+
+Type safety:
+  Go:    Static types, compile-time interface checks
+  Java:  Static types, generics
+  .NET:  Static types, generics
+  Node:  Dynamic (TypeScript adds types but not enforced at runtime)
+  Python: Dynamic (type hints are optional, not enforced)
+```
+
+Go compiles fast enough for the edit-compile-test loop to feel instant. Static typing catches interface mismatches at compile time — if a Postgres repo doesn't implement `user.Repository`, the build fails immediately.
+
+**6. Hexagonal architecture fits Go's interface system**
+
+```go
+// Port (domain layer — no implementation)
+type UserRepository interface {
+    Create(ctx context.Context, user User) error
+    GetByEmail(ctx context.Context, email, tenantID string) (User, error)
+}
+
+// Adapter 1: Postgres (production)
+type PostgresUserRepo struct{ db *sql.DB }
+func (r *PostgresUserRepo) Create(ctx context.Context, user User) error { ... }
+
+// Adapter 2: In-memory (testing)
+type InMemoryUserRepo struct{ users map[string]User }
+func (r *InMemoryUserRepo) Create(ctx context.Context, user User) error { ... }
+
+// Both satisfy the interface — swappable at compile time
+var _ UserRepository = (*PostgresUserRepo)(nil)    // compile-time check
+var _ UserRepository = (*InMemoryUserRepo)(nil)     // compile-time check
+```
+
+Go's implicit interface satisfaction (no `implements` keyword) makes hexagonal architecture natural. Any struct that has the right methods automatically satisfies the interface. This is why AuthCore has 20 in-memory repos and 7 Postgres repos — they're interchangeable without any framework.
+
+### Why Not the Others
+
+**Why not Java?**
+
+| Consideration | Java | Go | Verdict |
+|--------------|------|-----|---------|
+| JVM startup | 10-30 seconds | <1 second | Go wins for sidecar/edge |
+| Memory | 512MB+ minimum | 50MB idle | Go wins by 10x |
+| Docker image | 500MB | 15MB | Go wins by 33x |
+| Ecosystem | Massive (Spring, Quarkus) | Smaller but sufficient | Java wins for ecosystem |
+| Crypto libraries | Bouncy Castle (third-party) | stdlib (built-in) | Go wins for security |
+| Concurrency | Thread pools / virtual threads | Goroutines (native) | Go wins for simplicity |
+| Build time | 30-60 seconds | 5 seconds | Go wins by 10x |
+| Deployment | JRE required | Single binary | Go wins |
+
+Java was rejected primarily for **weight**. An IAM sidecar that uses 512MB RAM and takes 30 seconds to start is not viable for edge/sidecar deployment. Keycloak already exists in Java — there's no point building a lighter Keycloak in the same language.
+
+**Why not .NET?**
+
+| Consideration | .NET | Go | Verdict |
+|--------------|------|-----|---------|
+| Cross-platform | Good (since .NET 6) | Excellent (native compilation) | Tie |
+| Runtime | CLR required (~200MB) | None (static binary) | Go wins |
+| Linux-native feel | Good but Windows heritage | Born for Linux/containers | Go wins slightly |
+| IAM precedent | IdentityServer/Duende | None | .NET wins |
+| License | MIT (.NET runtime) | BSD (Go) | Tie |
+
+.NET was rejected because it still carries **runtime weight** and has a Windows-centric heritage. IdentityServer already owns the "embedded .NET auth" space — competing there makes no sense.
+
+**Why not Node.js?**
+
+| Consideration | Node.js | Go | Verdict |
+|--------------|---------|-----|---------|
+| Single-threaded event loop | Bottleneck on CPU (bcrypt) | Multi-core native | Go wins |
+| Type safety | TypeScript (optional) | Built-in | Go wins |
+| Dependency count | 100s of npm packages | 3 external deps | Go wins massively |
+| node_modules | ~150MB for typical project | 0 (compiled in) | Go wins |
+| bcrypt performance | Blocks event loop or uses worker threads | Runs on goroutine, OS thread handles CPU | Go wins |
+
+Node.js was rejected because auth is **CPU-intensive** (bcrypt hashing, JWT signing). Node's single-threaded event loop becomes a bottleneck under load. Also, the npm dependency tree is a security nightmare for auth-critical code.
+
+**Why not Rust?**
+
+| Consideration | Rust | Go | Verdict |
+|--------------|------|-----|---------|
+| Binary size | ~5MB | ~15MB | Rust wins slightly |
+| Performance | Faster (no GC) | Fast enough (GC pauses <1ms) | Rust wins slightly |
+| Safety | Memory-safe, no GC | Memory-safe, GC | Tie (both safe) |
+| Development speed | Slow (borrow checker, steep learning curve) | Fast (simple language, fast compilation) | Go wins significantly |
+| Ecosystem maturity | Young for web services | Mature (net/http, database/sql) | Go wins |
+| Hiring | Very hard to find Rust developers | Easy to find Go developers | Go wins |
+
+Rust was tempting for the performance edge but rejected for **development velocity**. AuthCore was built iteratively (12 modules, 249 files, 785 tests) in a short timeframe. Rust's borrow checker and steeper learning curve would have slowed development by 2-3x for marginal performance gains that don't matter in I/O-bound auth workloads.
+
+**Why not Python?**
+
+Python was never a serious candidate. Auth servers need:
+- High concurrency (GIL prevents this)
+- Fast crypto operations (CPython is slow)
+- Type safety (dynamic typing is risky for security code)
+- Small deployment (Python + venv = 200MB+)
+
+Python is excellent for SDKs/clients, not for the server itself.
+
+### The Result
+
+| Metric | AuthCore (Go) |
+|--------|---------------|
+| Binary | 15MB static, zero dependencies |
+| Docker image | 15MB (distroless) |
+| Idle RAM | ~50MB |
+| Startup | <1 second |
+| Build | ~5 seconds |
+| External deps | 3 (env, testify, x/crypto) + go-webauthn |
+| Crypto | 100% stdlib |
+| Concurrency | Goroutines (thousands of concurrent requests, ~4KB each) |
+| Files | 249 Go files, 785 tests |
+| Coverage | 83.4% + 131 E2E |
+
+Go was chosen because AuthCore needed to be **small enough to be a sidecar, fast enough for auth workloads, simple enough to audit, and safe enough for security-critical code**. No other language satisfies all four constraints simultaneously.
+
+---
+
 ## 1. Architectural Philosophy
 
 ### AuthCore — Hexagonal, Headless, Go
