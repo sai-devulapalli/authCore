@@ -2,13 +2,19 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"log/slog"
 	"testing"
 	"time"
 
+	adaptcrypto "github.com/authcore/internal/adapter/crypto"
 	"github.com/authcore/internal/application/jwks"
 	"github.com/authcore/internal/domain/jwk"
 	"github.com/authcore/internal/domain/token"
@@ -94,13 +100,21 @@ func newMockRefreshRepo() *mockRefreshRepo {
 	return &mockRefreshRepo{tokens: make(map[string]token.RefreshToken)}
 }
 
+func mockHashToken(tok string) string {
+	h := sha256.Sum256([]byte(tok))
+	return base64.RawURLEncoding.EncodeToString(h[:])
+}
+
 func (m *mockRefreshRepo) Store(_ context.Context, rt token.RefreshToken) error {
-	m.tokens[rt.Token] = rt
+	hashed := mockHashToken(rt.Token)
+	rt.Token = hashed
+	m.tokens[hashed] = rt
 	return nil
 }
 
 func (m *mockRefreshRepo) GetByToken(_ context.Context, tok string) (token.RefreshToken, error) {
-	rt, ok := m.tokens[tok]
+	hashed := mockHashToken(tok)
+	rt, ok := m.tokens[hashed]
 	if !ok {
 		return token.RefreshToken{}, errors.New("not found")
 	}
@@ -108,13 +122,14 @@ func (m *mockRefreshRepo) GetByToken(_ context.Context, tok string) (token.Refre
 }
 
 func (m *mockRefreshRepo) RevokeByToken(_ context.Context, tok string) error {
-	rt, ok := m.tokens[tok]
+	hashed := mockHashToken(tok)
+	rt, ok := m.tokens[hashed]
 	if !ok {
 		return errors.New("not found")
 	}
 	now := time.Now()
 	rt.RevokedAt = &now
-	m.tokens[tok] = rt
+	m.tokens[hashed] = rt
 	return nil
 }
 
@@ -209,6 +224,59 @@ func (m *mockBlacklist) Revoke(_ context.Context, jti string, _ time.Time) error
 
 func (m *mockBlacklist) IsRevoked(_ context.Context, jti string) (bool, error) {
 	return m.revoked[jti], nil
+}
+
+// testKeyPair holds a real RSA key pair for tests requiring signature verification.
+type testKeyPair struct {
+	privateKeyPEM []byte
+	publicKeyPEM  []byte
+}
+
+func generateTestKeyPair(t *testing.T) testKeyPair {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	privBytes, err := x509.MarshalPKCS8PrivateKey(key)
+	require.NoError(t, err)
+	privPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privBytes})
+
+	pubBytes, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	require.NoError(t, err)
+	pubPEM := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubBytes})
+
+	return testKeyPair{privateKeyPEM: privPEM, publicKeyPEM: pubPEM}
+}
+
+// mockJWKRepoReal returns a real RSA key pair for signature verification tests.
+type mockJWKRepoReal struct {
+	kp testKeyPair
+}
+
+func (m *mockJWKRepoReal) Store(_ context.Context, _ jwk.KeyPair) error { return nil }
+func (m *mockJWKRepoReal) GetActive(_ context.Context, _ string) (jwk.KeyPair, error) {
+	return jwk.KeyPair{ID: "real-kid", Algorithm: "RS256", PrivateKey: m.kp.privateKeyPEM, PublicKey: m.kp.publicKeyPEM, Active: true}, nil
+}
+func (m *mockJWKRepoReal) GetAllPublic(_ context.Context, _ string) ([]jwk.KeyPair, error) {
+	return nil, nil
+}
+func (m *mockJWKRepoReal) Deactivate(_ context.Context, _ string) error              { return nil }
+func (m *mockJWKRepoReal) GetAllActiveTenantIDs(_ context.Context) ([]string, error)  { return nil, nil }
+func (m *mockJWKRepoReal) DeleteInactive(_ context.Context, _ time.Time) (int64, error) { return 0, nil }
+
+// signTestJWT creates a properly signed JWT for testing.
+func signTestJWT(t *testing.T, claims map[string]any, kp testKeyPair) string {
+	t.Helper()
+	signer := adaptcrypto.NewJWTSigner()
+	claimsJSON, err := json.Marshal(claims)
+	require.NoError(t, err)
+
+	var tc token.Claims
+	require.NoError(t, json.Unmarshal(claimsJSON, &tc))
+
+	jwt, err := signer.Sign(tc, "real-kid", kp.privateKeyPEM, "RS256")
+	require.NoError(t, err)
+	return jwt
 }
 
 // --- Helpers ---
@@ -385,8 +453,9 @@ func TestExchange_ClientCredentials_MissingClientID(t *testing.T) {
 
 func TestExchange_RefreshToken_Success(t *testing.T) {
 	refreshRepo := newMockRefreshRepo()
-	refreshRepo.tokens["rt-123"] = token.RefreshToken{
-		Token:     "rt-123",
+	h := mockHashToken("rt-123")
+	refreshRepo.tokens[h] = token.RefreshToken{
+		Token:     h,
 		ClientID:  "client-1",
 		Subject:   "user-1",
 		TenantID:  "tenant-1",
@@ -411,8 +480,9 @@ func TestExchange_RefreshToken_Success(t *testing.T) {
 
 func TestExchange_RefreshToken_ReplayDetection(t *testing.T) {
 	refreshRepo := newMockRefreshRepo()
-	refreshRepo.tokens["rt-123"] = token.RefreshToken{
-		Token:     "rt-123",
+	h := mockHashToken("rt-123")
+	refreshRepo.tokens[h] = token.RefreshToken{
+		Token:     h,
 		FamilyID:  "fam-1",
 		Rotated:   true, // already used
 		ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
@@ -432,8 +502,9 @@ func TestExchange_RefreshToken_ReplayDetection(t *testing.T) {
 
 func TestExchange_RefreshToken_Expired(t *testing.T) {
 	refreshRepo := newMockRefreshRepo()
-	refreshRepo.tokens["rt-123"] = token.RefreshToken{
-		Token:     "rt-123",
+	h := mockHashToken("rt-123")
+	refreshRepo.tokens[h] = token.RefreshToken{
+		Token:     h,
 		ExpiresAt: time.Now().UTC().Add(-1 * time.Hour),
 	}
 
@@ -651,7 +722,8 @@ func TestAuthorizeDevice_Success(t *testing.T) {
 
 func TestRevoke_RefreshToken(t *testing.T) {
 	refreshRepo := newMockRefreshRepo()
-	refreshRepo.tokens["rt-123"] = token.RefreshToken{Token: "rt-123"}
+	h := mockHashToken("rt-123")
+	refreshRepo.tokens[h] = token.RefreshToken{Token: h}
 
 	svc := newTestService(&mockCodeRepo{}, &mockJWKRepo{}, &mockSigner{})
 	svc.WithRefreshRepo(refreshRepo)
@@ -701,14 +773,21 @@ func TestIntrospect_InvalidJWT(t *testing.T) {
 }
 
 func TestIntrospect_ValidJWT(t *testing.T) {
-	svc := newTestService(&mockCodeRepo{}, &mockJWKRepo{}, &mockSigner{})
+	kp := generateTestKeyPair(t)
+	jwkRepo := &mockJWKRepoReal{kp: kp}
+	svc := newTestService(&mockCodeRepo{}, jwkRepo, &mockSigner{})
 
-	// Construct a minimal valid JWT payload with future expiry
-	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256","typ":"JWT"}`))
-	payload := base64.RawURLEncoding.EncodeToString([]byte(`{"iss":"https://authcore","sub":"user-1","aud":["client-1"],"exp":9999999999,"iat":1000000000,"jti":"jti-1"}`))
-	fakeJWT := header + "." + payload + ".fakesig"
+	// Create a properly signed JWT
+	jwt := signTestJWT(t, map[string]any{
+		"iss": "https://authcore",
+		"sub": "user-1",
+		"aud": []string{"client-1"},
+		"exp": 9999999999,
+		"iat": 1000000000,
+		"jti": "jti-1",
+	}, kp)
 
-	resp, appErr := svc.Introspect(context.Background(), IntrospectRequest{Token: fakeJWT})
+	resp, appErr := svc.Introspect(context.Background(), IntrospectRequest{Token: jwt})
 
 	require.Nil(t, appErr)
 	assert.True(t, resp.Active)
@@ -717,14 +796,37 @@ func TestIntrospect_ValidJWT(t *testing.T) {
 	assert.Equal(t, "https://authcore", resp.Issuer)
 }
 
-func TestIntrospect_ExpiredJWT(t *testing.T) {
-	svc := newTestService(&mockCodeRepo{}, &mockJWKRepo{}, &mockSigner{})
+func TestIntrospect_InvalidSignature(t *testing.T) {
+	kp := generateTestKeyPair(t)
+	jwkRepo := &mockJWKRepoReal{kp: kp}
+	svc := newTestService(&mockCodeRepo{}, jwkRepo, &mockSigner{})
 
-	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256"}`))
-	payload := base64.RawURLEncoding.EncodeToString([]byte(`{"iss":"https://authcore","sub":"user-1","exp":1000000000}`))
-	fakeJWT := header + "." + payload + ".sig"
+	// Construct a JWT with a fake signature (should fail verification)
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256","typ":"JWT","kid":"real-kid"}`))
+	payload := base64.RawURLEncoding.EncodeToString([]byte(`{"iss":"https://authcore","sub":"user-1","aud":["client-1"],"exp":9999999999,"iat":1000000000,"jti":"jti-1"}`))
+	fakeJWT := header + "." + payload + ".fakesig"
 
 	resp, appErr := svc.Introspect(context.Background(), IntrospectRequest{Token: fakeJWT})
+
+	require.Nil(t, appErr)
+	assert.False(t, resp.Active, "JWT with invalid signature should not be active")
+}
+
+func TestIntrospect_ExpiredJWT(t *testing.T) {
+	kp := generateTestKeyPair(t)
+	jwkRepo := &mockJWKRepoReal{kp: kp}
+	svc := newTestService(&mockCodeRepo{}, jwkRepo, &mockSigner{})
+
+	// Create a properly signed JWT that is expired
+	jwt := signTestJWT(t, map[string]any{
+		"iss": "https://authcore",
+		"sub": "user-1",
+		"aud": []string{"client-1"},
+		"exp": 1000000000,
+		"iat": 999999000,
+	}, kp)
+
+	resp, appErr := svc.Introspect(context.Background(), IntrospectRequest{Token: jwt})
 
 	require.Nil(t, appErr)
 	assert.False(t, resp.Active)
@@ -757,8 +859,9 @@ func TestExchange_AuthCode_MissingClientID(t *testing.T) {
 func TestExchange_RefreshToken_Revoked(t *testing.T) {
 	now := time.Now()
 	refreshRepo := newMockRefreshRepo()
-	refreshRepo.tokens["rt-123"] = token.RefreshToken{
-		Token:     "rt-123",
+	h := mockHashToken("rt-123")
+	refreshRepo.tokens[h] = token.RefreshToken{
+		Token:     h,
 		RevokedAt: &now,
 		ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
 	}

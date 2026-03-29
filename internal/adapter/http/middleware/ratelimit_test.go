@@ -71,21 +71,24 @@ func TestRateLimiter_DifferentIPs(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
-func TestRateLimiter_XForwardedFor(t *testing.T) {
+func TestRateLimiter_IgnoresXForwardedFor(t *testing.T) {
 	rl := NewRateLimiter(1, 1*time.Minute)
 	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	// First request with XFF header — should use RemoteAddr, not XFF
 	req := httptest.NewRequest(http.MethodPost, "/login", nil)
+	req.RemoteAddr = "10.0.0.1:5555"
 	req.Header.Set("X-Forwarded-For", "203.0.113.50, 70.41.3.18")
 	w := httptest.NewRecorder()
 	rl.Middleware(next).ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	// Same IP from XFF should be blocked
+	// Same RemoteAddr should be blocked regardless of different XFF
 	req = httptest.NewRequest(http.MethodPost, "/login", nil)
-	req.Header.Set("X-Forwarded-For", "203.0.113.50, 70.41.3.18")
+	req.RemoteAddr = "10.0.0.1:5555"
+	req.Header.Set("X-Forwarded-For", "1.2.3.4")
 	w = httptest.NewRecorder()
 	rl.Middleware(next).ServeHTTP(w, req)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
@@ -98,9 +101,11 @@ func TestExtractClientIP(t *testing.T) {
 		remote   string
 		expected string
 	}{
-		{"XFF", map[string]string{"X-Forwarded-For": "1.2.3.4, 5.6.7.8"}, "", "1.2.3.4"},
-		{"XRealIP", map[string]string{"X-Real-IP": "10.0.0.1"}, "", "10.0.0.1"},
+		// extractClientIP now always uses RemoteAddr (XFF/X-Real-IP are ignored for security)
+		{"XFF_ignored", map[string]string{"X-Forwarded-For": "1.2.3.4, 5.6.7.8"}, "9.9.9.9:1234", "9.9.9.9"},
+		{"XRealIP_ignored", map[string]string{"X-Real-IP": "10.0.0.1"}, "9.9.9.9:1234", "9.9.9.9"},
 		{"RemoteAddr", map[string]string{}, "192.168.1.1:8080", "192.168.1.1"},
+		{"RemoteAddr_no_port", map[string]string{}, "192.168.1.1", "192.168.1.1"},
 	}
 
 	for _, tt := range tests {

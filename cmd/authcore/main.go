@@ -2,9 +2,18 @@ package main
 
 import (
 	"context"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"net/http"
 	"os"
 	"os/signal"
@@ -245,7 +254,8 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 	// Middleware
 	corsMiddleware := middleware.NewCORS(cfg.CORSOrigins)
 	tracingMiddleware := middleware.NewTracing()
-	adminAuth := middleware.NewAdminAuth(cfg.AdminAPIKey)
+	adminAuth := middleware.NewAdminAuth(cfg.AdminAPIKey).
+		WithJWTVerifier(buildAdminJWTVerifier(jwksSvc))
 	authRateLimiter := middleware.NewRateLimiter(20, 1*time.Minute)
 	tenantResolver := middleware.NewTenantResolver(tenantSvc, cfg.TenantMode, log)
 
@@ -403,6 +413,12 @@ func connectDB(ctx context.Context, cfg config.Config, log *slog.Logger) (*sql.D
 		return nil, fmt.Errorf("database open: %w", err)
 	}
 
+	// Connection pool settings for production use
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(30 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
+
 	if err := db.Ping(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("database ping: %w", err)
@@ -415,6 +431,137 @@ func connectDB(ctx context.Context, cfg config.Config, log *slog.Logger) (*sql.D
 	}
 
 	return db, nil
+}
+
+// buildAdminJWTVerifier creates a JWT verification function that uses the JWKS
+// service to cryptographically verify admin JWT signatures before trusting claims.
+func buildAdminJWTVerifier(jwksSvc *jwks.Service) middleware.JWTVerifier {
+	return func(tokenStr string) (*middleware.AdminContext, error) {
+		parts := strings.Split(tokenStr, ".")
+		if len(parts) != 3 {
+			return nil, fmt.Errorf("malformed JWT")
+		}
+
+		// Decode header for algorithm
+		headerJSON, err := base64.RawURLEncoding.DecodeString(parts[0])
+		if err != nil {
+			return nil, fmt.Errorf("invalid header encoding")
+		}
+		var header struct {
+			Alg string `json:"alg"`
+		}
+		if err := json.Unmarshal(headerJSON, &header); err != nil {
+			return nil, fmt.Errorf("invalid header")
+		}
+
+		// Decode payload to get audience (admin tokens use "authcore-admin")
+		payloadJSON, err := base64.RawURLEncoding.DecodeString(parts[1])
+		if err != nil {
+			return nil, fmt.Errorf("invalid payload encoding")
+		}
+		var claims struct {
+			Subject   string   `json:"sub"`
+			Audience  []string `json:"aud"`
+			ExpiresAt int64    `json:"exp"`
+			Roles     []string `json:"roles"`
+		}
+		if err := json.Unmarshal(payloadJSON, &claims); err != nil {
+			return nil, fmt.Errorf("invalid claims")
+		}
+
+		// Verify audience
+		isAdmin := false
+		for _, aud := range claims.Audience {
+			if aud == "authcore-admin" {
+				isAdmin = true
+				break
+			}
+		}
+		if !isAdmin {
+			return nil, fmt.Errorf("not an admin token")
+		}
+
+		// Check expiry
+		if claims.ExpiresAt > 0 && time.Now().Unix() > claims.ExpiresAt {
+			return nil, fmt.Errorf("token expired")
+		}
+
+		if claims.Subject == "" {
+			return nil, fmt.Errorf("missing subject")
+		}
+
+		// Get signing key for "default" tenant (admin tokens are signed with default tenant key)
+		kp, kpErr := jwksSvc.GetActiveKeyPair(context.Background(), "default")
+		if kpErr != nil {
+			return nil, fmt.Errorf("no signing key available for verification")
+		}
+
+		// Verify signature
+		signingInput := parts[0] + "." + parts[1]
+		sigBytes, err := base64.RawURLEncoding.DecodeString(parts[2])
+		if err != nil {
+			return nil, fmt.Errorf("invalid signature encoding")
+		}
+
+		if err := adminVerifySignature(signingInput, sigBytes, kp.PublicKey, header.Alg); err != nil {
+			return nil, fmt.Errorf("signature verification failed: %w", err)
+		}
+
+		// Extract role
+		var role domainadmin.AdminRole
+		if len(claims.Roles) > 0 {
+			role = domainadmin.AdminRole(claims.Roles[0])
+		}
+		if !role.IsValid() {
+			return nil, fmt.Errorf("invalid admin role")
+		}
+
+		return &middleware.AdminContext{
+			Role:    role,
+			AdminID: claims.Subject,
+		}, nil
+	}
+}
+
+// adminVerifySignature verifies RSA or ECDSA signature with a PEM-encoded public key.
+func adminVerifySignature(signingInput string, signature, publicKeyPEM []byte, algorithm string) error {
+	block, _ := pem.Decode(publicKeyPEM)
+	if block == nil {
+		return fmt.Errorf("failed to decode public key PEM")
+	}
+
+	pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("failed to parse public key: %w", err)
+	}
+
+	hash := sha256.Sum256([]byte(signingInput))
+
+	switch algorithm {
+	case "RS256":
+		rsaPub, ok := pubKey.(*rsa.PublicKey)
+		if !ok {
+			return fmt.Errorf("expected RSA public key")
+		}
+		return rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, hash[:], signature)
+	case "ES256":
+		ecPub, ok := pubKey.(*ecdsa.PublicKey)
+		if !ok {
+			return fmt.Errorf("expected EC public key")
+		}
+		byteLen := (ecPub.Curve.Params().BitSize + 7) / 8
+		if len(signature) != 2*byteLen {
+			return fmt.Errorf("invalid ECDSA signature length")
+		}
+		r := new(big.Int).SetBytes(signature[:byteLen])
+		s := new(big.Int).SetBytes(signature[byteLen:])
+		if !ecdsa.Verify(ecPub, hash[:], r, s) {
+			return fmt.Errorf("ECDSA verification failed")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported algorithm: %s", algorithm)
+	}
 }
 
 func run() error {

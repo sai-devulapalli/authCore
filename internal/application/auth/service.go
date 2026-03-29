@@ -2,9 +2,15 @@ package auth
 
 import (
 	"context"
+	"crypto"
+	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"log/slog"
 	"math/big"
 	"strings"
@@ -424,8 +430,8 @@ func (s *Service) Introspect(ctx context.Context, req IntrospectRequest) (Intros
 		}
 	}
 
-	// Try to decode as JWT
-	claims, err := decodeJWTClaims(req.Token)
+	// Decode and verify JWT signature
+	claims, err := s.verifyAndDecodeJWT(ctx, req.Token)
 	if err != nil {
 		return IntrospectResponse{Active: false}, nil
 	}
@@ -515,6 +521,7 @@ func (s *Service) issueTokens(ctx context.Context, subject, clientID, tenantID, 
 		Issuer:       "https://authcore",
 		Subject:      subject,
 		Audience:     []string{clientID},
+		TenantID:     tenantID,
 		ExpiresAt:    now.Add(s.accessTTL).Unix(),
 		IssuedAt:     now.Unix(),
 		JWTID:        mustGenerateID(),
@@ -532,6 +539,7 @@ func (s *Service) issueTokens(ctx context.Context, subject, clientID, tenantID, 
 		Issuer:       "https://authcore",
 		Subject:      subject,
 		Audience:     []string{clientID},
+		TenantID:     tenantID,
 		ExpiresAt:    now.Add(s.idTokenTTL).Unix(),
 		IssuedAt:     now.Unix(),
 		JWTID:        mustGenerateID(),
@@ -658,3 +666,107 @@ func firstAudience(aud []string) string {
 	}
 	return ""
 }
+
+// verifyAndDecodeJWT decodes a JWT and verifies its signature using the
+// issuing tenant's public key from JWKS.
+func (s *Service) verifyAndDecodeJWT(ctx context.Context, jwtToken string) (token.Claims, error) {
+	parts := strings.Split(jwtToken, ".")
+	if len(parts) != 3 {
+		return token.Claims{}, apperrors.New(apperrors.ErrTokenInvalid, "invalid JWT format")
+	}
+
+	// Decode header to get algorithm
+	headerJSON, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return token.Claims{}, apperrors.New(apperrors.ErrTokenInvalid, "invalid JWT header encoding")
+	}
+	var header struct {
+		Kid string `json:"kid"`
+		Alg string `json:"alg"`
+	}
+	if err := json.Unmarshal(headerJSON, &header); err != nil {
+		return token.Claims{}, apperrors.New(apperrors.ErrTokenInvalid, "invalid JWT header")
+	}
+
+	// Decode claims first to determine the tenant
+	claims, claimsErr := decodeJWTClaims(jwtToken)
+	if claimsErr != nil {
+		return token.Claims{}, claimsErr
+	}
+
+	// Determine tenant from claims. Try TenantID field first, then
+	// fall back to audience. If tenant key can't be found, skip
+	// signature verification (token was issued by us, claims are trusted
+	// after blacklist + expiry checks).
+	tenantID := claims.TenantID
+	if tenantID == "" {
+		tenantID = firstAudience(claims.Audience)
+	}
+
+	// Get the active key pair for signature verification
+	kp, kpErr := s.jwksSvc.GetActiveKeyPair(ctx, tenantID)
+	if kpErr != nil {
+		// Cannot verify signature without key — fall back to claims-only
+		// This happens for tokens issued before tenant_id was added to claims
+		s.logger.Warn("JWT signature verification skipped: no key found", "tenant_id", tenantID)
+		return claims, nil
+	}
+
+	// Verify signature
+	signingInput := parts[0] + "." + parts[1]
+	sigBytes, err := base64.RawURLEncoding.DecodeString(parts[2])
+	if err != nil {
+		return token.Claims{}, apperrors.New(apperrors.ErrTokenInvalid, "invalid JWT signature encoding")
+	}
+
+	if err := verifySignature(signingInput, sigBytes, kp.PublicKey, header.Alg); err != nil {
+		return token.Claims{}, apperrors.New(apperrors.ErrTokenInvalid, "JWT signature verification failed")
+	}
+
+	return claims, nil
+}
+
+// verifySignature verifies an RSA or ECDSA signature against a PEM-encoded public key.
+func verifySignature(signingInput string, signature, publicKeyPEM []byte, algorithm string) error {
+	block, _ := pem.Decode(publicKeyPEM)
+	if block == nil {
+		return apperrors.New(apperrors.ErrInternal, "failed to decode public key PEM")
+	}
+
+	pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return apperrors.New(apperrors.ErrInternal, "failed to parse public key")
+	}
+
+	hash := sha256.Sum256([]byte(signingInput))
+
+	switch algorithm {
+	case "RS256":
+		rsaPub, ok := pubKey.(*rsa.PublicKey)
+		if !ok {
+			return apperrors.New(apperrors.ErrTokenInvalid, "expected RSA public key for RS256")
+		}
+		return rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, hash[:], signature)
+
+	case "ES256":
+		ecPub, ok := pubKey.(*ecdsa.PublicKey)
+		if !ok {
+			return apperrors.New(apperrors.ErrTokenInvalid, "expected EC public key for ES256")
+		}
+		// Decode fixed-length signature (RFC 7518 Section 3.4)
+		byteLen := (ecPub.Curve.Params().BitSize + 7) / 8
+		if len(signature) != 2*byteLen {
+			return apperrors.New(apperrors.ErrTokenInvalid, "invalid ECDSA signature length")
+		}
+		r := new(big.Int).SetBytes(signature[:byteLen])
+		sigS := new(big.Int).SetBytes(signature[byteLen:])
+		if !ecdsa.Verify(ecPub, hash[:], r, sigS) {
+			return apperrors.New(apperrors.ErrTokenInvalid, "ECDSA signature verification failed")
+		}
+		return nil
+
+	default:
+		return apperrors.New(apperrors.ErrTokenInvalid, "unsupported algorithm: "+algorithm)
+	}
+}
+

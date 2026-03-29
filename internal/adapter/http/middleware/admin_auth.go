@@ -36,15 +36,27 @@ func WithAdminContext(ctx context.Context, ac *AdminContext) context.Context {
 	return context.WithValue(ctx, adminCtxKey, ac)
 }
 
+// JWTVerifier is a function that verifies a JWT token string and returns admin context.
+// If nil, signature verification is skipped (backward-compatible for tests).
+type JWTVerifier func(tokenStr string) (*AdminContext, error)
+
 // AdminAuth is middleware that protects management endpoints with an API key or admin JWT.
 type AdminAuth struct {
-	apiKey string
+	apiKey    string
+	verifyJWT JWTVerifier
 }
 
 // NewAdminAuth creates a new AdminAuth middleware.
 // If apiKey is empty, all requests are allowed (development mode).
 func NewAdminAuth(apiKey string) *AdminAuth {
 	return &AdminAuth{apiKey: apiKey}
+}
+
+// WithJWTVerifier sets a JWT verification function for admin token authentication.
+// When set, admin JWTs are cryptographically verified before trust.
+func (a *AdminAuth) WithJWTVerifier(v JWTVerifier) *AdminAuth {
+	a.verifyJWT = v
+	return a
 }
 
 // Middleware returns an http.Handler that checks for a valid API key or admin JWT.
@@ -77,7 +89,15 @@ func (a *AdminAuth) Middleware(next http.Handler) http.Handler {
 		}
 
 		// Try to decode as admin JWT
-		ac, err := decodeAdminJWT(tokenStr)
+		var ac *AdminContext
+		var err error
+		if a.verifyJWT != nil {
+			// Use cryptographic signature verification
+			ac, err = a.verifyJWT(tokenStr)
+		} else {
+			// Fallback: decode without signature verification (tests only)
+			ac, err = decodeAdminJWT(tokenStr)
+		}
 		if err != nil {
 			httputil.WriteError(w, apperrors.New(apperrors.ErrUnauthorized, "invalid API key or admin token")) //nolint:errcheck
 			return

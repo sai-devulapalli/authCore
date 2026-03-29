@@ -50,10 +50,9 @@ func TestCleanupService_RefreshTokenCleanup(t *testing.T) {
 	_, err := refreshRepo.GetByToken(ctx, "expired-1")
 	assert.Error(t, err, "expired token should be cleaned up")
 
-	// Active token should remain
-	got, err := refreshRepo.GetByToken(ctx, "active-1")
-	require.NoError(t, err)
-	assert.Equal(t, "active-1", got.Token)
+	// Active token should remain (token is hashed on storage, so check by lookup only)
+	_, err = refreshRepo.GetByToken(ctx, "active-1")
+	assert.NoError(t, err, "active token should remain")
 
 	// Revoked token was revoked recently (within retention), might still be there
 	// but with the short retention of 1 day and revokedAt being recent, it should stay

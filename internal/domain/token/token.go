@@ -20,6 +20,9 @@ type Claims struct {
 	Roles       []string `json:"roles,omitempty"`
 	Permissions []string `json:"permissions,omitempty"`
 
+	// Tenant ID for signature verification during introspection
+	TenantID string `json:"tid,omitempty"`
+
 	// Token versioning for instant revocation
 	TokenVersion int `json:"tv,omitempty"`
 }

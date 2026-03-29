@@ -2,12 +2,22 @@ package postgres
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/base64"
 	"time"
 
 	"github.com/authcore/internal/domain/token"
 	apperrors "github.com/authcore/pkg/sdk/errors"
 )
+
+// hashRefreshToken returns a SHA-256 hash of the token for storage.
+// Refresh tokens are stored as hashes so that a database compromise
+// does not expose usable tokens.
+func hashRefreshToken(tok string) string {
+	h := sha256.Sum256([]byte(tok))
+	return base64.RawURLEncoding.EncodeToString(h[:])
+}
 
 // RefreshTokenRepository implements token.RefreshTokenRepository using PostgreSQL.
 type RefreshTokenRepository struct {
@@ -23,10 +33,12 @@ var _ token.RefreshTokenRepository = (*RefreshTokenRepository)(nil)
 
 func (r *RefreshTokenRepository) Store(ctx context.Context, rt token.RefreshToken) error {
 	query := `INSERT INTO refresh_tokens (id, token, client_id, subject, tenant_id, scope, family_id, expires_at, created_at, rotated)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		ON CONFLICT (id) DO UPDATE SET rotated = EXCLUDED.rotated, revoked_at = EXCLUDED.revoked_at`
 
+	hashed := hashRefreshToken(rt.Token)
 	_, err := r.db.ExecContext(ctx, query,
-		rt.ID, rt.Token, rt.ClientID, rt.Subject, rt.TenantID,
+		rt.ID, hashed, rt.ClientID, rt.Subject, rt.TenantID,
 		rt.Scope, rt.FamilyID, rt.ExpiresAt, rt.CreatedAt, rt.Rotated,
 	)
 	if err != nil {
@@ -42,7 +54,8 @@ func (r *RefreshTokenRepository) GetByToken(ctx context.Context, tok string) (to
 	var rt token.RefreshToken
 	var revokedAt *time.Time
 
-	err := r.db.QueryRowContext(ctx, query, tok).Scan(
+	hashed := hashRefreshToken(tok)
+	err := r.db.QueryRowContext(ctx, query, hashed).Scan(
 		&rt.ID, &rt.Token, &rt.ClientID, &rt.Subject, &rt.TenantID,
 		&rt.Scope, &rt.FamilyID, &rt.ExpiresAt, &rt.CreatedAt, &revokedAt, &rt.Rotated,
 	)
@@ -57,8 +70,9 @@ func (r *RefreshTokenRepository) GetByToken(ctx context.Context, tok string) (to
 }
 
 func (r *RefreshTokenRepository) RevokeByToken(ctx context.Context, tok string) error {
+	hashed := hashRefreshToken(tok)
 	query := `UPDATE refresh_tokens SET revoked_at = $1 WHERE token = $2 AND revoked_at IS NULL`
-	_, err := r.db.ExecContext(ctx, query, time.Now().UTC(), tok)
+	_, err := r.db.ExecContext(ctx, query, time.Now().UTC(), hashed)
 	if err != nil {
 		return apperrors.Wrap(apperrors.ErrInternal, "failed to revoke refresh token", err)
 	}

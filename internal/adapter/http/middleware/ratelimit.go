@@ -99,13 +99,12 @@ func (rl *RateLimiter) purgeExpired() {
 }
 
 func extractClientIP(r *http.Request) string {
-	// Check X-Forwarded-For first (reverse proxy)
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		return strings.Split(xff, ",")[0]
+	// Use RemoteAddr for rate limiting — it reflects the actual TCP connection
+	// and cannot be spoofed. X-Forwarded-For and X-Real-IP are user-controlled
+	// headers that an attacker can set to bypass rate limits.
+	addr := r.RemoteAddr
+	if idx := strings.LastIndex(addr, ":"); idx != -1 {
+		return addr[:idx]
 	}
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return xri
-	}
-	// Fall back to remote address
-	return strings.Split(r.RemoteAddr, ":")[0]
+	return addr
 }
