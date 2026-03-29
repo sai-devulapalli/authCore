@@ -16,6 +16,7 @@ type RateLimiter struct {
 	requests map[string][]time.Time
 	limit    int
 	window   time.Duration
+	done     chan struct{}
 }
 
 // NewRateLimiter creates a new rate limiter.
@@ -25,10 +26,15 @@ func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
 		requests: make(map[string][]time.Time),
 		limit:    limit,
 		window:   window,
+		done:     make(chan struct{}),
 	}
-	// Cleanup expired entries every minute
 	go rl.cleanup()
 	return rl
+}
+
+// Stop terminates the cleanup goroutine.
+func (rl *RateLimiter) Stop() {
+	close(rl.done)
 }
 
 // Middleware returns an http.Handler that enforces rate limits.
@@ -73,8 +79,14 @@ func (rl *RateLimiter) allow(key string) bool {
 
 func (rl *RateLimiter) cleanup() {
 	ticker := time.NewTicker(1 * time.Minute)
-	for range ticker.C {
-		rl.purgeExpired()
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			rl.purgeExpired()
+		case <-rl.done:
+			return
+		}
 	}
 }
 
