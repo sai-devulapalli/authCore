@@ -67,10 +67,10 @@ Authentication via OIDC/OAuth 2.0 with JWT (RS256/ES256). Admin auth supports AP
 
 | Severity | Finding | File |
 |----------|---------|------|
-| **CRITICAL** | **JWT signature NOT verified in introspection.** `decodeJWTClaims()` only base64-decodes the payload — no signature check. Attacker can forge any JWT and introspect it as valid. | `application/auth/service.go:631-649` |
-| **CRITICAL** | **Admin JWT signature NOT verified.** `decodeAdminJWT()` decodes payload without signature verification. Attacker can forge admin JWTs with `super_admin` role. | `middleware/admin_auth.go:97-170` |
-| **CRITICAL** | **Refresh tokens stored in plaintext.** Database breach exposes all tokens. Attacker can impersonate all users. | `migrations/005_create_refresh_tokens.sql`, `postgres/refresh_repository.go` |
-| **CRITICAL** | **Rate limiter bypassable via X-Forwarded-For spoofing.** Attacker sends arbitrary IPs in header → each gets own quota. No proxy IP validation. | `middleware/ratelimit.go:102-104` |
+| ~~CRITICAL~~ | ~~JWT signature NOT verified in introspection~~ | **FIXED** — `verifyAndDecodeJWT()` validates RS256/ES256 against tenant JWKS |
+| ~~CRITICAL~~ | ~~Admin JWT signature NOT verified~~ | **FIXED** — middleware accepts JWTVerifier function for signature validation |
+| ~~CRITICAL~~ | ~~Refresh tokens stored in plaintext~~ | **FIXED** — SHA-256 hashed before storage, constant-time lookup |
+| ~~CRITICAL~~ | ~~Rate limiter bypassable via X-Forwarded-For~~ | **FIXED** — uses RemoteAddr only, ignores spoofable headers |
 | HIGH | PII (email addresses) logged in plaintext in admin and user services | `application/admin/service.go:84-93`, `application/user/service.go:93` |
 | HIGH | No `MaxBytesReader` on request bodies — unbounded request size → memory exhaustion | All handlers |
 | HIGH | No maximum password length — bcrypt with very long passwords = CPU DoS | `adapter/crypto/hasher.go` |
@@ -82,10 +82,10 @@ Authentication via OIDC/OAuth 2.0 with JWT (RS256/ES256). Admin auth supports AP
 The JWT signature verification gaps are **authentication bypass vulnerabilities**. An attacker who discovers the introspection or admin endpoints can forge tokens without knowing the signing key. This is a severity-1 security incident waiting to happen.
 
 ### Recommendation
-- **P0:** Implement full JWT signature verification in introspection (verify against tenant's JWKS)
-- **P0:** Implement admin JWT signature verification (verify against server's signing key)
-- **P0:** Hash refresh tokens with bcrypt/SHA-256 before storage, constant-time comparison on lookup
-- **P0:** Validate X-Forwarded-For against trusted proxy IP whitelist
+- ~~P0: JWT signature verification in introspection~~ **DONE**
+- ~~P0: Admin JWT signature verification~~ **DONE**
+- ~~P0: Hash refresh tokens~~ **DONE** (SHA-256)
+- ~~P0: Rate limiter X-Forwarded-For fix~~ **DONE** (uses RemoteAddr)
 - P1: Add `http.MaxBytesReader` (1MB default) to all handlers
 - P1: Cap password length at 72 bytes (bcrypt limit) or 128 chars
 - P1: Remove PII from logs — log user_id instead of email

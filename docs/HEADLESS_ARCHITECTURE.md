@@ -186,7 +186,7 @@ AuthCore uses **hexagonal architecture** — the reason it can be headless, embe
 |----------|----------------------------------|
 | **Headless** | HTTP handlers are just one adapter — swap for gRPC, CLI, or SDK |
 | **Embeddable** | The Go SDK calls application services directly, skipping HTTP |
-| **Testable** | Swap Postgres for in-memory repos — 785 tests run without Docker |
+| **Testable** | Swap Postgres for in-memory repos — 791 tests run without Docker |
 | **Swappable** | Replace Postgres with CockroachDB, or Redis with Memcached — zero business logic changes |
 | **Multi-protocol** | Add gRPC or GraphQL alongside REST without touching domain/application layers |
 

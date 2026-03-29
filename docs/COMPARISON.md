@@ -1,6 +1,6 @@
 # AuthCore vs Alternatives — Detailed Comparison
 
-> **Last updated:** 2026-03-29 | AuthCore: 249 files, 785 tests, 39 endpoints
+> **Last updated:** 2026-03-29 | AuthCore: 262 files, 791 tests, 46 endpoints
 
 ## Overview
 
@@ -13,7 +13,7 @@
 | License | Private | Apache 2.0 | Commercial ($1,500+/yr for prod) | Pay-per-MAU |
 | Maturity | New (0 prod deployments) | 10+ years, CNCF incubating | 8+ years, enterprise | 7+ years, AWS |
 | Philosophy | Headless API-only | Full-stack (UI + API) | Library in your app | Managed SaaS |
-| Test coverage | 83.4% + 131 E2E | Unknown | Unknown | N/A |
+| Test coverage | 80%+ coverage + 141 E2E | Unknown | Unknown | N/A |
 
 ---
 
@@ -82,7 +82,7 @@
 | Apple | Yes (ES256 JWT client_secret) | Yes | Community | Yes |
 | Facebook | **No** | Yes | Community | Yes |
 | Twitter / X | No | Yes | Community | No |
-| SAML IdP Brokering | **Roadmap Tier 2** | Yes (full brokering) | No | Yes |
+| SAML IdP Brokering | SP mode (IdP brokering roadmap) | Yes (full brokering) | No | Yes |
 | Generic OIDC | Yes | Yes | Yes | Yes |
 | Generic OAuth 2.0 | Yes | Yes | No | No |
 | Custom IdP Adapter | Port interface (OAuthClient) | SPI (Java) | IAuthenticationHandler (.NET) | Lambda triggers |
@@ -284,7 +284,7 @@ After implementing the [Tier 1-3 roadmap](ROADMAP.md), AuthCore closes every maj
 | App-only tenant isolation | DB-level RLS | 1 | Exceeds Cognito |
 | Basic rate limiting | Multi-level + Redis | 1 | Matches Keycloak |
 | API key admin auth | JWT-based admin roles | 1 | Matches Keycloak |
-| No SAML | SAML 2.0 | 2 | Matches all |
+| ~~No SAML~~ | ~~SAML 2.0~~ | ~~2~~ | **DONE** — SP mode implemented |
 | No user provisioning | SCIM | 2 | Matches Keycloak |
 | No webhooks | Event streaming | 3 | Matches Keycloak SPI |
 | RBAC only | ABAC policy engine | 3 | Exceeds Keycloak |
@@ -306,4 +306,4 @@ AuthCore post-roadmap (projected):
 
 AuthCore's **protocol layer** (OIDC, OAuth, JWT, PKCE, WebAuthn) is on par with all three. The remaining gap is **enterprise**: SAML 2.0, SCIM, and external security audit.
 
-With RBAC, audit logging, encryption at rest, rate limiting, mTLS, OTP (email + SMS), WebAuthn/FIDO2, Apple Sign In, automatic key rotation, token cleanup, OpenTelemetry, and 131 E2E tests — AuthCore is production-ready for most non-SAML use cases. For teams building custom auth UX on modern stacks, AuthCore provides comprehensive primitives with significantly lower operational overhead than Keycloak.
+With RBAC, audit logging, encryption at rest, rate limiting, mTLS, OTP (email + SMS), WebAuthn/FIDO2, Apple Sign In, automatic key rotation, token cleanup, OpenTelemetry, SAML 2.0, and 141 E2E tests — AuthCore is production-ready for enterprise use cases. For teams building custom auth UX on modern stacks, AuthCore provides comprehensive primitives with significantly lower operational overhead than Keycloak.

@@ -101,7 +101,7 @@ Each is a potential CVE vector. AuthCore depends on Go's stdlib crypto (maintain
 
 ```
 Full build time:
-  Go:    ~5 seconds (AuthCore, 249 files)
+  Go:    ~5 seconds (AuthCore, 262 files)
   Java:  ~30-60 seconds (Keycloak, thousands of files)
   .NET:  ~10-20 seconds (typical project)
   Rust:  ~2-5 minutes (fresh build)
@@ -192,7 +192,7 @@ Node.js was rejected because auth is **CPU-intensive** (bcrypt hashing, JWT sign
 | Ecosystem maturity | Young for web services | Mature (net/http, database/sql) | Go wins |
 | Hiring | Very hard to find Rust developers | Easy to find Go developers | Go wins |
 
-Rust was tempting for the performance edge but rejected for **development velocity**. AuthCore was built iteratively (12 modules, 249 files, 785 tests) in a short timeframe. Rust's borrow checker and steeper learning curve would have slowed development by 2-3x for marginal performance gains that don't matter in I/O-bound auth workloads.
+Rust was tempting for the performance edge but rejected for **development velocity**. AuthCore was built iteratively (12 modules, 262 files, 791 tests) in a short timeframe. Rust's borrow checker and steeper learning curve would have slowed development by 2-3x for marginal performance gains that don't matter in I/O-bound auth workloads.
 
 **Why not Python?**
 
@@ -216,8 +216,8 @@ Python is excellent for SDKs/clients, not for the server itself.
 | External deps | 3 (env, testify, x/crypto) + go-webauthn |
 | Crypto | 100% stdlib |
 | Concurrency | Goroutines (thousands of concurrent requests, ~4KB each) |
-| Files | 249 Go files, 785 tests |
-| Coverage | 83.4% + 131 E2E |
+| Files | 262 Go files, 791 tests |
+| Coverage | 80%+ coverage + 141 E2E |
 
 Go was chosen because AuthCore needed to be **small enough to be a sidecar, fast enough for auth workloads, simple enough to audit, and safe enough for security-critical code**. No other language satisfies all four constraints simultaneously.
 
@@ -240,7 +240,7 @@ UI: None — pure API. You build the frontend.
 **Pros:**
 - Tiny footprint — runs on a Raspberry Pi, perfect as K8s sidecar
 - Every line is auditable — ~249 Go files, no generated code, no magic
-- 83.4% test coverage + 131 E2E tests — confidence in correctness
+- 80%+ test coverage + 141 E2E tests — confidence in correctness
 - Embeddable — the Go SDK runs AuthCore as a library, zero network hop
 - Multi-tenant by design — tenant_id on every table, not bolted on
 - Fast compilation — full build in ~5 seconds
@@ -362,7 +362,7 @@ UI: Hosted UI (customizable CSS) or your own
 | Device Code (RFC 8628) | Full | Full | Add-on | **No** | IoT/TV apps need this |
 | Token Introspection | Full | Full | Full | **No** | Cognito forces local JWT validation only |
 | Token Revocation | JTI blacklist + refresh revoke | Full | Full | API only | AuthCore has both access + refresh revocation |
-| SAML 2.0 | **No** | Full IdP + SP | Add-on | SP only | AuthCore's biggest gap for enterprise |
+| SAML 2.0 | Yes (SP mode, crewjam/saml) | Full IdP + SP | Add-on | SP only | AuthCore supports SP; IdP mode not yet |
 | PAR | **No** | Yes | Yes | **No** | Pushed Authorization Requests (security improvement) |
 | CIBA | **No** | Yes | **No** | **No** | Backchannel auth (rare use case) |
 
@@ -442,7 +442,7 @@ UI: Hosted UI (customizable CSS) or your own
 | Capability | AuthCore | Keycloak | IdentityServer | Cognito |
 |-----------|----------|----------|----------------|---------|
 | Admin UI | Separate React SPA (authcore-admin) | Beautiful built-in console | Sold separately by Duende | AWS Console |
-| Admin API | REST (30+ endpoints, API key auth) | REST + Java Client + CLI | **None** | AWS SDK/CLI |
+| Admin API | REST (46 endpoints, JWT-based admin auth + API key) | REST + Java Client + CLI | **None** | AWS SDK/CLI |
 | Admin CLI | **Roadmap** | kcadm.sh (powerful) | dotnet CLI | AWS CLI |
 | Admin auth | API key (JWT-based on roadmap) | Username/password + optional 2FA | N/A | IAM policies |
 | Admin roles | **Roadmap** (super_admin, tenant_admin, readonly, auditor) | Fine-grained admin permissions | N/A | IAM policies |
@@ -473,7 +473,7 @@ UI: Hosted UI (customizable CSS) or your own
 
 **Winner:** Cognito (compliance certifications). Keycloak (battle-tested security).
 
-**AuthCore's risk:** No security audit means unknown vulnerabilities. Mitigated by: 83.4% test coverage, hexagonal architecture (small attack surface), stdlib crypto (no third-party JWT libraries), and open-source review.
+**AuthCore's risk:** No security audit means unknown vulnerabilities. Mitigated by: 80%+ test coverage, hexagonal architecture (small attack surface), stdlib crypto (no third-party JWT libraries), and open-source review.
 
 ---
 
@@ -537,11 +537,11 @@ UI: Hosted UI (customizable CSS) or your own
 | Strength | Weakness |
 |----------|----------|
 | Tiny footprint (15MB, <300MB RAM) | No production track record |
-| Headless — total UX control | No SAML 2.0 (roadmap) |
+| Headless — total UX control | No SAML IdP mode (SP done) |
 | Native multi-tenancy (thousands) | No security audit |
 | Embeddable Go SDK | Go-only for embedded mode |
 | Automatic key rotation + cleanup | No LDAP federation |
-| 83% coverage + 131 E2E tests | No admin CLI (roadmap) |
+| 80%+ coverage + 141 E2E tests | No admin CLI (roadmap) |
 | 5 language SDKs | No Prometheus metrics |
 
 ### Keycloak
@@ -692,7 +692,7 @@ AuthCore is not the right choice for everyone. Here are the scenarios where you 
 | Your situation | AuthCore? | Better alternative |
 |---------------|-----------|-------------------|
 | Building custom auth UX for SaaS | **Yes** | — |
-| Need SAML for enterprise customers today | No | Keycloak |
+| Need SAML IdP mode (not just SP) | No (SP only) | Keycloak |
 | Need login page in 1 hour | No | Auth0, Cognito |
 | Need SOC2/HIPAA compliance report | No | Cognito, Auth0 |
 | No frontend developers on team | No | Keycloak |

@@ -639,7 +639,7 @@ authcore/
 | **Device Code** | Yes | Yes | Community | No |
 | **Token Revocation** | Yes | Yes | Yes | Via API |
 | **Token Introspection** | Yes | Yes | Yes | No |
-| **SAML 2.0** | Not yet | Full | Community | Yes |
+| **SAML 2.0** | Yes (SP mode) | Full (IdP + SP) | Community | Yes |
 | **User Registration** | API only | UI + API | No (BYOU) | UI + API |
 | **User Login** | API only | UI + API | No (BYOU) | UI + API |
 | **Social Login** | 6 providers | 10+ providers | Via plugins | 4 providers |

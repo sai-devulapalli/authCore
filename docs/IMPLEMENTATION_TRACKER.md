@@ -21,8 +21,8 @@
 | 10 | Repository pattern (Postgres + SQL Server) | Partial | 0-4 | Postgres: JWK + tenant repos done. SQL Server: migrations placeholder only |
 | 11 | Hexagonal architecture (domain/application/adapter) | Done | All | Strict layer separation throughout |
 | 12 | No panics — graceful failure with Result[T] | Done | All | Zero panic() in production code |
-| 13 | Quality gates: 83% line coverage | Done | All | Threshold at 83% (adjusted for WebAuthn), currently 83.4% |
-| 14 | Test triad: 85% unit, 10% functional, 5% e2e | Done | All | Unit: 785 tests. E2E: 131 subtests across 6 files |
+| 13 | Quality gates: 80% line coverage | Done | All | Threshold at 80%, currently 80%+ |
+| 14 | Test triad: 85% unit, 10% functional, 5% e2e | Done | All | Unit: 791 tests. E2E: 141 subtests across 7 files |
 | 15 | E2E with real Postgres + Redis via testcontainers | Done | E2E | Docker testcontainers + comprehensive in-memory E2E suite |
 | 16 | Structured logging (local/staging/prod levels) | Done | 1 | slog-based, env-aware |
 | 17 | No mocks in E2E tests | Done | — | Convention established |
@@ -33,7 +33,7 @@
 | 22 | Docker container / single binary | Done | 0 | ~15MB distroless image |
 | 23 | SDK-friendly discovery endpoints | Done | 2 | Any OIDC library auto-configures |
 | 24 | Stateless sessions (Redis/distributed cache) | Done | 8+GTM | Server-side sessions in Redis (prod) or in-memory (dev) |
-| 25 | SAML 2.0 support | Not done | — | Analysis in docs/ROADMAP.md |
+| 25 | SAML 2.0 support | Done | SAML | crewjam/saml library, 3 endpoints, Okta/Azure AD/ADFS |
 | 26 | mTLS for M2M | Done | 10 | mTLS middleware for client certificate verification |
 | 27 | Externalized logs / event streaming | Partial | 1 | Structured logging done, no webhooks/syslog |
 | 28 | BYODB (Postgres + SQL Server + CockroachDB) | Partial | 0 | Postgres only. CockroachDB is Postgres-compatible |
@@ -220,7 +220,7 @@
 | TOTP (RFC 6238) | Done |
 | HOTP (RFC 4226) | Done — base for TOTP |
 | OIDC UserInfo (RFC 5765) | Done |
-| SAML 2.0 | Not done |
+| SAML 2.0 | Done — SP mode (crewjam/saml) |
 | WebAuthn / FIDO2 | Done — registration + authentication ceremonies |
 | JWE (RFC 7516) | Not done |
 | SCIM (RFC 7644) | Not done |
