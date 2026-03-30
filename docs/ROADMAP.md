@@ -1,6 +1,6 @@
 # AuthCore — Product Roadmap
 
-> **Last updated:** 2026-03-29
+> **Last updated:** 2026-03-31
 > **Current state:** ~273 files | 812 tests | 141 E2E + 30 Playwright | 80%+ coverage | 49 endpoints | 47 packages | 19 migrations
 
 ---
@@ -9,16 +9,20 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  🔴 TIER 1 — DONE                                          │
-│  Token versioning ✅, DB tenant isolation (RLS) ✅,          │
-│  admin auth model ✅, rate limiting fix ✅,                   │
-│  JWT sig verification ✅, refresh token hashing ✅            │
+│  🔴 TIER 1 — DONE ✅                                        │
+│  Token versioning, RLS, admin auth, rate limiting,          │
+│  JWT sig verification, refresh token hashing                │
 ├─────────────────────────────────────────────────────────────┤
-│  🟠 TIER 2 — MOSTLY DONE                                   │
-│  SAML 2.0 ✅, Admin UI ✅, SCIM (pending)                    │
+│  🟠 TIER 2 — DONE ✅                                        │
+│  SAML 2.0, Admin UI, webhooks, per-tenant config,           │
+│  AI agent auth, per-tenant SMTP. SCIM (pending)             │
 ├─────────────────────────────────────────────────────────────┤
-│  🟢 TIER 3 — Differentiate (advanced security + platform)  │
-│  Policy engine (ABAC), webhooks, risk-based auth            │
+│  🟢 TIER 3 — Differentiate (next phase)                    │
+│  Policy engine (ABAC), risk-based auth                      │
+├─────────────────────────────────────────────────────────────┤
+│  🔵 TIER 4 — UX & Competitive Edge (new)                   │
+│  Magic links, session mgmt, impersonation, passkeys,        │
+│  user groups, analytics, auth flow builder                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -238,23 +242,9 @@ Admin configures IdP → User clicks SSO → Redirect to IdP
 
 ---
 
-### 3.2 Event Streaming (Webhooks First)
+### ~~3.2 Event Streaming (Webhooks)~~ — DONE
 
-**Problem:** No way to notify external systems of auth events. Must poll audit API.
-
-**Design:**
-
-| Method | Route | Description |
-|--------|-------|-------------|
-| POST | `/tenants/{tid}/webhooks` | Create subscription (URL, secret, event types) |
-| GET | `/tenants/{tid}/webhooks` | List subscriptions |
-| DELETE | `/tenants/{tid}/webhooks/{id}` | Delete |
-
-**Payload:** JSON event with HMAC-SHA256 signature in `X-AuthCore-Signature` header.
-
-**Delivery:** Background worker via Redis queue. Retry with exponential backoff (3 attempts).
-
-**Effort:** Medium (1-2 weeks) | **Files:** ~10 new, ~2 modified
+Implemented: HMAC-SHA256 signed webhook delivery per tenant. 3 endpoints, fire-and-forget from audit service. See `internal/application/webhook/service.go`.
 
 ---
 
@@ -286,37 +276,226 @@ Admin configures IdP → User clicks SSO → Redirect to IdP
 
 ---
 
-## Implementation Order
+## 🔵 Tier 4: UX & Competitive Edge
+
+### 4.1 Magic Link Login (Priority 1)
+
+**Problem:** OTP requires typing a 6-digit code. Magic links are one-click — better UX. Slack, Notion, Linear all use this.
+
+**Design:**
+- `POST /magic-link/request` → send email with signed login link
+- `GET /magic-link/verify?token=xxx` → validate token, create session, redirect
+- Token: JWT with 15-min expiry, single-use (stored in Redis/cache)
+- Link format: `https://auth.myapp.com/magic-link/verify?token=eyJ...`
+
+**Effort:** 1-2 days | Reuses existing email sender + token infrastructure
+
+---
+
+### 4.2 Session Management API (Priority 2)
+
+**Problem:** No way to list active sessions, revoke specific sessions, or "sign out everywhere". Enterprise security teams require this.
+
+**Design:**
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/tenants/{tid}/users/{uid}/sessions` | List all active sessions |
+| DELETE | `/tenants/{tid}/users/{uid}/sessions/{sid}` | Revoke specific session |
+| DELETE | `/tenants/{tid}/users/{uid}/sessions` | Revoke all sessions ("sign out everywhere") |
+
+Each session record: ID, UserID, TenantID, IP, UserAgent, CreatedAt, LastUsedAt, ExpiresAt.
+
+**Effort:** 2-3 days | Extends existing session repository
+
+---
+
+### 4.3 Admin Impersonation (Priority 3)
+
+**Problem:** Support teams need to "see what the user sees" to debug issues. Currently impossible without knowing user's password.
+
+**Design:**
+- `POST /admin/impersonate` `{ user_id, tenant_id }` → returns session token for that user
+- Only `super_admin` can impersonate
+- Audit logged as `EventAdminImpersonation` with admin_id + target user_id
+- Impersonated sessions have `impersonated_by` field in session record
+- JWT includes `impersonator` claim so downstream APIs can detect impersonation
+
+**Effort:** 2-3 days | Reuses existing session + audit infrastructure
+
+---
+
+### 4.4 Passkey-Only Registration (No Password)
+
+**Problem:** Passwords are dead. Apple, Google, Microsoft all push passkeys. Let users register without ever creating a password.
+
+**Design:**
+- `POST /register` accepts `{ email, name }` without password when tenant setting allows
+- After registration: immediately start WebAuthn registration flow
+- Login: WebAuthn only (no password prompt)
+- Tenant setting: `allow_passwordless_registration: true`
+
+**Effort:** 2-3 days | Extends existing WebAuthn + registration flows
+
+---
+
+### 4.5 Token Binding to Device
+
+**Problem:** Stolen JWTs work from any device. Token binding makes them useless if moved.
+
+**Design:**
+- Client sends device fingerprint (User-Agent hash + screen size + timezone) during /authorize
+- Fingerprint included in JWT as `dfp` claim
+- On API calls, server compares request fingerprint vs token fingerprint
+- Mismatch → reject with 401 + audit log
+
+**Effort:** 3-5 days
+
+---
+
+### 4.6 User Groups
+
+**Problem:** Assigning roles to individual users doesn't scale. Groups allow "all engineers get editor role".
+
+**Design:**
+- `Group` entity: ID, TenantID, Name, Description
+- `GroupMembership`: UserID, GroupID, TenantID
+- Roles assigned to groups, inherited by members
+- JWT `roles` + `permissions` include group-inherited roles
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| POST/GET | `/tenants/{tid}/groups` | CRUD |
+| POST/DELETE | `/tenants/{tid}/groups/{gid}/members/{uid}` | Membership |
+| POST/DELETE | `/tenants/{tid}/groups/{gid}/roles/{rid}` | Group roles |
+
+**Effort:** 3-5 days
+
+---
+
+### 4.7 IP Allowlisting per Tenant
+
+**Problem:** Enterprise: "only allow login from our office IP ranges". Currently no IP filtering.
+
+**Design:**
+- Add `allowed_ips []string` to TenantSettings (CIDR notation: `10.0.0.0/8`, `203.0.113.0/24`)
+- Check client IP against allowlist in /login and /authorize middleware
+- Empty list = allow all (default)
+- Admin UI: textarea in Settings tab
+
+**Effort:** 1-2 days
+
+---
+
+### 4.8 Account Lockout
+
+**Problem:** Brute force protection beyond rate limiting. Lock account after N failures, auto-unlock after timeout.
+
+**Design:**
+- Track failed login attempts per user in cache/Redis
+- After `max_login_attempts` (from TenantSettings): lock account
+- `lockout_duration` seconds: auto-unlock
+- `POST /tenants/{tid}/users/{uid}/unlock` — admin manual unlock
+- Audit: `EventAccountLocked`, `EventAccountUnlocked`
+
+**Effort:** 2-3 days | TenantSettings fields already exist
+
+---
+
+### 4.9 Brute Force Intelligence
+
+**Problem:** Track bad actors globally. Share threat intel across tenants.
+
+**Design:**
+- Global failed-IP counter (Redis sorted set)
+- If IP fails across multiple tenants → auto-block for 24h
+- `GET /admin/threats` — list blocked IPs with failure count
+- `DELETE /admin/threats/{ip}` — unblock
+
+**Effort:** 3-5 days
+
+---
+
+### 4.10 Login/Signup Analytics
+
+**Problem:** No visibility into auth metrics per tenant. "How many users signed up this week?"
+
+**Design:**
+- `GET /tenants/{tid}/analytics` — returns counts from audit events
+  ```json
+  {
+    "registrations_24h": 15,
+    "logins_24h": 230,
+    "failed_logins_24h": 12,
+    "mfa_adoption_rate": 0.45,
+    "active_sessions": 89,
+    "top_login_methods": ["password", "otp", "google"]
+  }
+  ```
+- Computed from audit_events table (no new storage)
+- Admin UI: dashboard cards with sparklines
+
+**Effort:** 3-5 days
+
+---
+
+### 4.11 Tenant Cloning
+
+**Problem:** Onboarding a new customer with similar config to existing one. Manually recreating clients, providers, roles is tedious.
+
+**Design:**
+- `POST /tenants/{source_id}/clone` `{ new_id, new_domain }` → copies all config
+- Clones: clients (new secrets), providers, roles, settings, webhooks
+- Does NOT clone: users, sessions, audit events
+
+**Effort:** 1-2 days
+
+---
+
+### 4.12 Auth Flow Builder
+
+**Problem:** Fixed auth flow (register → login → MFA). Some tenants want: register → email verify → admin approve → MFA. Others want: SSO only, no local registration.
+
+**Design:**
+- JSON-based flow definition per tenant stored in TenantSettings:
+  ```json
+  {
+    "registration_flow": ["collect_email", "collect_password", "verify_email"],
+    "login_flow": ["password", "mfa_if_required"],
+    "require_email_verification": true,
+    "allow_registration": true,
+    "require_admin_approval": false
+  }
+  ```
+- Services check flow config before proceeding
+
+**Effort:** 1-2 weeks
+
+---
+
+## Implementation Priority
 
 ```
-Phase 1 (Weeks 1-2):   Token versioning + Admin auth model
-Phase 2 (Weeks 2-3):   DB tenant isolation (RLS) + Multi-level rate limiting
-Phase 3 (Weeks 3-6):   SAML 2.0
-Phase 4 (Weeks 5-7):   SCIM + Webhooks (parallelizable with SAML)
-Phase 5 (Weeks 7-9):   Policy engine (ABAC)
-Phase 6 (Weeks 9-11):  Risk-based auth
-Admin UI:               Continuous (pages added as features ship)
-```
+Immediate (1 week):
+  Magic link login → Session management → Impersonation
 
-## Dependency Graph
+Next (2-3 weeks):
+  Account lockout → IP allowlisting → Passkey registration
 
-```
-Token versioning ──→ Admin auth model ──→ SAML 2.0 ──→ SCIM
-                                                    ↗
-DB tenant isolation (RLS) ─────────────────────────
+Following (1 month):
+  User groups → Analytics → Tenant cloning
 
-Multi-level rate limiting ─── (independent) ───────
-
-Webhooks ──→ Risk-based auth (uses event signals)
-          ↗
-ABAC ────
+Later:
+  Token binding → Brute force intel → Auth flow builder
+  ABAC policy engine → Risk-based auth
 ```
 
 ## Estimated Total
 
-| Tier | Items | Effort |
-|------|-------|--------|
-| Tier 1 | 4 features | 2-3 weeks |
-| Tier 2 | 3 features | 4-6 weeks |
-| Tier 3 | 3 features | 5-8 weeks |
-| **Total** | **10 features** | **~11-17 weeks** |
+| Tier | Items | Status | Effort |
+|------|-------|--------|--------|
+| Tier 1 | 6 features | **DONE** | — |
+| Tier 2 | 6 features | **DONE** | — |
+| Tier 3 | 2 features | Pending | 4-6 weeks |
+| Tier 4 | 12 features | Pending | 6-10 weeks |
+| **Total remaining** | **14 features** | | **~10-16 weeks** |
