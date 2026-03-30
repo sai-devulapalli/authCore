@@ -223,6 +223,8 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 
 	// Wire RBAC into auth service for JWT claims
 	authSvc.WithRBAC(r.assignment)
+	authSvc.WithAudit(auditService)
+	authSvc.WithClientRepo(r.client)
 
 	oauthClient := adapthttp.NewHTTPOAuthClient()
 	providerService := providersvc.NewService(r.provider, log)
@@ -361,6 +363,10 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 	mux.Handle("/tenants/", adminAuth.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Route to sub-resources
 		if strings.Contains(r.URL.Path, "/clients") {
+			if strings.Contains(r.URL.Path, "/api-key") {
+				clientHandler.HandleAPIKey(w, r)
+				return
+			}
 			if strings.Count(r.URL.Path, "/") >= 4 {
 				clientHandler.HandleClient(w, r)
 			} else {

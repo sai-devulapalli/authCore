@@ -36,6 +36,11 @@ type Client struct {
 	AllowedScopes     []string
 	AllowedGrantTypes []GrantType
 	TokenVersion      int
+	APIKey            string   // non-expiring static API key (hashed before storage)
+	APIKeyHash        []byte   // SHA-256 hash of the API key
+	IsAgent           bool     // marks this client as an AI agent/service account
+	Description       string   // what this agent does
+	AllowedEndpoints  []string // e.g., ["/api/data", "/api/reports"] — empty = all endpoints
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	DeletedAt         *time.Time

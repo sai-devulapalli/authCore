@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"log/slog"
 
@@ -170,6 +171,58 @@ func (s *Service) ValidateClient(ctx context.Context, clientID, tenantID string)
 		return client.Client{}, apperrors.New(apperrors.ErrInvalidClient, "client not found")
 	}
 	return c, nil
+}
+
+// GenerateAPIKey generates a non-expiring API key for a client.
+// The raw key is returned once; only the SHA-256 hash is stored.
+func (s *Service) GenerateAPIKey(ctx context.Context, clientID, tenantID string) (string, *apperrors.AppError) {
+	// Verify client exists
+	c, err := s.repo.GetByID(ctx, clientID, tenantID)
+	if err != nil {
+		return "", apperrors.Wrap(apperrors.ErrNotFound, "client not found", err)
+	}
+	if c.IsDeleted() {
+		return "", apperrors.New(apperrors.ErrNotFound, "client not found")
+	}
+
+	// Generate a random 32-byte API key (base64url encoded)
+	rawKey, genErr := generateSecret()
+	if genErr != nil {
+		return "", apperrors.Wrap(apperrors.ErrInternal, "failed to generate API key", genErr)
+	}
+
+	// Hash with SHA-256 before storing
+	hash := sha256.Sum256([]byte(rawKey))
+
+	if err := s.repo.UpdateAPIKey(ctx, clientID, tenantID, hash[:]); err != nil {
+		return "", apperrors.Wrap(apperrors.ErrInternal, "failed to store API key", err)
+	}
+
+	s.logger.Info("API key generated", "client_id", clientID, "tenant_id", tenantID)
+	if s.auditSvc != nil {
+		s.auditSvc.Log(ctx, tenantID, "system", "system", domainaudit.EventClientCreated, "client", clientID, nil, map[string]any{
+			"action": "api_key_generated",
+		})
+	}
+
+	return rawKey, nil
+}
+
+// ValidateAPIKey validates an API key and returns the associated client.
+func (s *Service) ValidateAPIKey(ctx context.Context, apiKey, tenantID string) (*client.Client, *apperrors.AppError) {
+	// Hash the input key with SHA-256
+	hash := sha256.Sum256([]byte(apiKey))
+
+	// Look up client by API key hash + tenant
+	c, err := s.repo.GetByAPIKeyHash(ctx, hash[:], tenantID)
+	if err != nil {
+		return nil, apperrors.New(apperrors.ErrInvalidClient, "invalid API key")
+	}
+	if c.IsDeleted() {
+		return nil, apperrors.New(apperrors.ErrInvalidClient, "invalid API key")
+	}
+
+	return &c, nil
 }
 
 func toResponse(c client.Client, secret string) ClientResponse {

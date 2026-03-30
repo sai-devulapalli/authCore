@@ -32,6 +32,7 @@ const (
 	EventProviderCreated  EventType = "provider_created"
 	EventProviderDeleted  EventType = "provider_deleted"
 	EventAdminAPIAccess   EventType = "admin_api_access"
+	EventAgentTokenIssued EventType = "agent_token_issued"
 )
 
 // Event represents a single audit log entry.

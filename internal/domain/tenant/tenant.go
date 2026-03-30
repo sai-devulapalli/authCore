@@ -39,6 +39,7 @@ type TenantSettings struct {
 	AllowedOrigins           []string `json:"allowed_origins"`            // CORS per tenant
 	MaxLoginAttempts         int      `json:"max_login_attempts"`         // 0 = unlimited
 	LockoutDuration          int      `json:"lockout_duration"`           // seconds
+	AgentRateLimit           int      `json:"agent_rate_limit"`           // requests per minute for M2M clients, 0 = use global
 
 	// SMTP per-tenant override (empty = use global config)
 	SMTPHost     string `json:"smtp_host"`

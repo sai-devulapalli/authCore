@@ -57,6 +57,14 @@ func (m *mockClientRepo) List(ctx context.Context, tenantID string, offset, limi
 	return nil, 0, nil
 }
 
+func (m *mockClientRepo) UpdateAPIKey(_ context.Context, _, _ string, _ []byte) error {
+	return nil
+}
+
+func (m *mockClientRepo) GetByAPIKeyHash(_ context.Context, _ []byte, _ string) (client.Client, error) {
+	return client.Client{}, errors.New("not found")
+}
+
 type mockHasher struct {
 	hashFunc   func(secret string) ([]byte, error)
 	verifyFunc func(secret string, hash []byte) error

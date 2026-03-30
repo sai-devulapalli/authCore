@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"bytes"
 	"context"
 	"strings"
 	"sync"
@@ -81,4 +82,27 @@ func (r *InMemoryClientRepository) List(_ context.Context, tenantID string, offs
 		end = total
 	}
 	return active[offset:end], total, nil
+}
+
+func (r *InMemoryClientRepository) UpdateAPIKey(_ context.Context, clientID, tenantID string, apiKeyHash []byte) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	c, ok := r.clients[clientID]
+	if !ok || !strings.EqualFold(c.TenantID, tenantID) {
+		return apperrors.New(apperrors.ErrNotFound, "client not found")
+	}
+	c.APIKeyHash = apiKeyHash
+	r.clients[clientID] = c
+	return nil
+}
+
+func (r *InMemoryClientRepository) GetByAPIKeyHash(_ context.Context, apiKeyHash []byte, tenantID string) (client.Client, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, c := range r.clients {
+		if c.TenantID == tenantID && c.DeletedAt == nil && len(c.APIKeyHash) > 0 && bytes.Equal(c.APIKeyHash, apiKeyHash) {
+			return c, nil
+		}
+	}
+	return client.Client{}, apperrors.New(apperrors.ErrNotFound, "client not found")
 }

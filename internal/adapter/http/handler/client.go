@@ -103,6 +103,32 @@ func (h *ClientHandler) HandleClient(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// HandleAPIKey serves POST /tenants/{tenant_id}/clients/{client_id}/api-key.
+// Generates a new non-expiring API key for the client. Returns the raw key once.
+func (h *ClientHandler) HandleAPIKey(w http.ResponseWriter, r *http.Request) {
+	tenantID := extractPathSegment(r.URL.Path, "tenants", 1)
+	clientID := extractPathSegment(r.URL.Path, "clients", 1)
+	if tenantID == "" || clientID == "" {
+		httputil.WriteError(w, httputil.MethodNotAllowed("tenant_id and client_id are required")) //nolint:errcheck
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		httputil.WriteError(w, httputil.MethodNotAllowed(r.Method)) //nolint:errcheck
+		return
+	}
+
+	rawKey, appErr := h.svc.GenerateAPIKey(r.Context(), clientID, tenantID)
+	if appErr != nil {
+		httputil.WriteError(w, appErr) //nolint:errcheck
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{ //nolint:errcheck
+		"api_key": rawKey,
+	})
+}
+
 // extractPathSegment extracts the segment after the given key in a URL path.
 // e.g., extractPathSegment("/tenants/t1/clients/c1", "tenants", 1) returns "t1"
 func extractPathSegment(path, key string, offset int) string {

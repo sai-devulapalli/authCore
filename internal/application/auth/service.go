@@ -16,7 +16,10 @@ import (
 	"strings"
 	"time"
 
+	auditsvc "github.com/authcore/internal/application/audit"
 	"github.com/authcore/internal/application/jwks"
+	domainaudit "github.com/authcore/internal/domain/audit"
+	"github.com/authcore/internal/domain/client"
 	"github.com/authcore/internal/domain/rbac"
 	"github.com/authcore/internal/domain/tenant"
 	"github.com/authcore/internal/domain/token"
@@ -34,6 +37,8 @@ type Service struct {
 	userRepo      user.Repository
 	tenantRepo    tenant.Repository
 	assignRepo    rbac.AssignmentRepository
+	clientRepo    client.Repository
+	auditSvc      *auditsvc.Service
 	jwksSvc       *jwks.Service
 	signer        token.Signer
 	logger        *slog.Logger
@@ -103,6 +108,18 @@ func (s *Service) WithTenantRepo(repo tenant.Repository) *Service {
 // WithRBAC sets the RBAC assignment repo for including roles/permissions in JWT.
 func (s *Service) WithRBAC(assignRepo rbac.AssignmentRepository) *Service {
 	s.assignRepo = assignRepo
+	return s
+}
+
+// WithAudit configures audit event logging.
+func (s *Service) WithAudit(a *auditsvc.Service) *Service {
+	s.auditSvc = a
+	return s
+}
+
+// WithClientRepo sets the client repository for looking up client metadata.
+func (s *Service) WithClientRepo(repo client.Repository) *Service {
+	s.clientRepo = repo
 	return s
 }
 
@@ -212,8 +229,18 @@ func (s *Service) exchangeClientCredentials(ctx context.Context, req TokenReques
 	tenantID := req.TenantID
 	scope := req.Scope
 
+	// Look up client for endpoint restrictions
+	var endpoints []string
+	var clientName string
+	if s.clientRepo != nil {
+		if c, err := s.clientRepo.GetByID(ctx, req.ClientID, tenantID); err == nil {
+			endpoints = c.AllowedEndpoints
+			clientName = c.ClientName
+		}
+	}
+
 	// For client_credentials, the subject is the client itself
-	resp, err := s.issueTokens(ctx, req.ClientID, req.ClientID, tenantID, scope, "", false)
+	resp, err := s.issueTokensWithEndpoints(ctx, req.ClientID, req.ClientID, tenantID, scope, "", false, endpoints)
 	if err != nil {
 		return token.TokenResponse{}, err
 	}
@@ -223,6 +250,17 @@ func (s *Service) exchangeClientCredentials(ctx context.Context, req TokenReques
 	resp.IDToken = ""
 
 	s.logger.Info("tokens issued", "grant", "client_credentials", "client_id", req.ClientID)
+
+	// Audit log for agent token issuance
+	if s.auditSvc != nil {
+		s.auditSvc.Log(ctx, tenantID, req.ClientID, "agent", domainaudit.EventAgentTokenIssued, "client", req.ClientID, nil, map[string]any{
+			"grant_type":  "client_credentials",
+			"scope":       scope,
+			"agent_id":    req.ClientID,
+			"agent_name":  clientName,
+		})
+	}
+
 	return resp, nil
 }
 
@@ -476,6 +514,66 @@ func (s *Service) Introspect(ctx context.Context, req IntrospectRequest) (Intros
 		Issuer:    claims.Issuer,
 		JWTID:     claims.JWTID,
 	}, nil
+}
+
+// issueTokensWithEndpoints creates tokens with optional endpoint restrictions.
+func (s *Service) issueTokensWithEndpoints(ctx context.Context, subject, clientID, tenantID, scope, nonce string, includeRefresh bool, endpoints []string) (token.TokenResponse, *apperrors.AppError) {
+	resp, err := s.issueTokens(ctx, subject, clientID, tenantID, scope, nonce, includeRefresh)
+	if err != nil {
+		return resp, err
+	}
+
+	// If endpoints are specified, re-sign the access token with endpoint claims
+	if len(endpoints) > 0 {
+		kp, keyErr := s.jwksSvc.GetActiveKeyPair(ctx, tenantID)
+		if keyErr != nil {
+			return resp, nil // fallback: return token without endpoint claims
+		}
+
+		now := time.Now().UTC()
+		var roles []string
+		var permissions []string
+		if s.assignRepo != nil && subject != "" {
+			userRoles, _ := s.assignRepo.GetUserRoles(ctx, subject, tenantID)
+			for _, r := range userRoles {
+				roles = append(roles, r.Name)
+			}
+			permissions = rbac.FlattenPermissions(userRoles)
+		}
+
+		var tokenVersion int
+		if s.userRepo != nil && subject != "" && tenantID != "" {
+			if u, err := s.userRepo.GetByID(ctx, subject, tenantID); err == nil {
+				tokenVersion = u.TokenVersion
+			}
+		}
+		if s.tenantRepo != nil && tenantID != "" {
+			if t, err := s.tenantRepo.GetByID(ctx, tenantID); err == nil && t.TokenVersion > tokenVersion {
+				tokenVersion = t.TokenVersion
+			}
+		}
+
+		accessClaims := token.Claims{
+			Issuer:       "https://authcore",
+			Subject:      subject,
+			Audience:     []string{clientID},
+			TenantID:     tenantID,
+			ExpiresAt:    now.Add(s.accessTTL).Unix(),
+			IssuedAt:     now.Unix(),
+			JWTID:        mustGenerateID(),
+			Roles:        roles,
+			Permissions:  permissions,
+			TokenVersion: tokenVersion,
+			Endpoints:    endpoints,
+		}
+
+		accessToken, signErr := s.signer.Sign(accessClaims, kp.ID, kp.PrivateKey, kp.Algorithm)
+		if signErr == nil {
+			resp.AccessToken = accessToken
+		}
+	}
+
+	return resp, nil
 }
 
 // issueTokens creates access + optional id + optional refresh tokens.

@@ -152,6 +152,52 @@ func (r *ClientRepository) List(ctx context.Context, tenantID string, offset, li
 	return clients, total, rows.Err()
 }
 
+func (r *ClientRepository) UpdateAPIKey(ctx context.Context, clientID, tenantID string, apiKeyHash []byte) error {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
+	query := `UPDATE clients SET api_key_hash = $1, updated_at = $2 WHERE id = $3 AND tenant_id = $4 AND deleted_at IS NULL`
+	result, err := r.db.ExecContext(ctx, query, apiKeyHash, time.Now().UTC(), clientID, tenantID)
+	if err != nil {
+		return apperrors.Wrap(apperrors.ErrInternal, "failed to update API key", err)
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return apperrors.New(apperrors.ErrNotFound, "client not found")
+	}
+	return nil
+}
+
+func (r *ClientRepository) GetByAPIKeyHash(ctx context.Context, apiKeyHash []byte, tenantID string) (client.Client, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
+	query := `SELECT id, tenant_id, client_name, client_type, secret_hash, redirect_uris, allowed_scopes, allowed_grant_types, created_at, updated_at, deleted_at
+		FROM clients WHERE api_key_hash = $1 AND tenant_id = $2 AND deleted_at IS NULL`
+
+	var c client.Client
+	var clientType string
+	var redirectURIs, scopes, grantTypes []string
+	var deletedAt *time.Time
+
+	err := r.db.QueryRowContext(ctx, query, apiKeyHash, tenantID).Scan(
+		&c.ID, &c.TenantID, &c.ClientName, &clientType, &c.SecretHash,
+		(*pgArray)(&redirectURIs), (*pgArray)(&scopes), (*pgArray)(&grantTypes),
+		&c.CreatedAt, &c.UpdatedAt, &deletedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return client.Client{}, apperrors.New(apperrors.ErrNotFound, "client not found")
+		}
+		return client.Client{}, apperrors.Wrap(apperrors.ErrInternal, "failed to query client by API key", err)
+	}
+
+	c.ClientType = client.ClientType(clientType)
+	c.RedirectURIs = redirectURIs
+	c.AllowedScopes = scopes
+	c.AllowedGrantTypes = toGrantTypes(grantTypes)
+	c.DeletedAt = deletedAt
+	return c, nil
+}
+
 func toGrantTypes(ss []string) []client.GrantType {
 	gts := make([]client.GrantType, len(ss))
 	for i, s := range ss {

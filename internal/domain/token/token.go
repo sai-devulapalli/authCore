@@ -25,6 +25,9 @@ type Claims struct {
 
 	// Token versioning for instant revocation
 	TokenVersion int `json:"tv,omitempty"`
+
+	// Allowed API endpoints for agent tokens
+	Endpoints []string `json:"endpoints,omitempty"`
 }
 
 // TokenResponse is the OAuth 2.0 token response (RFC 6749 Section 5.1).
