@@ -1,5 +1,7 @@
 package user
 
+import "time"
+
 // RegisterRequest is the DTO for user registration.
 type RegisterRequest struct {
 	Email    string `json:"email"`
@@ -73,4 +75,15 @@ type ResetPasswordRequest struct {
 	Code        string `json:"code"`
 	NewPassword string `json:"new_password"`
 	TenantID    string `json:"-"`
+}
+
+// UserSummary is a safe representation of a user for listing (no password hash).
+type UserSummary struct {
+	ID            string    `json:"id"`
+	Email         string    `json:"email"`
+	Name          string    `json:"name"`
+	Phone         string    `json:"phone,omitempty"`
+	EmailVerified bool      `json:"email_verified"`
+	Enabled       bool      `json:"enabled"`
+	CreatedAt     time.Time `json:"created_at"`
 }

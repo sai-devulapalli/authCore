@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/authcore/internal/domain/user"
+	"github.com/authplex/internal/domain/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

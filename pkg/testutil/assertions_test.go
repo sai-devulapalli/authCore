@@ -3,7 +3,7 @@ package testutil
 import (
 	"testing"
 
-	sdkerrors "github.com/authcore/pkg/sdk/errors"
+	sdkerrors "github.com/authplex/pkg/sdk/errors"
 )
 
 func TestAssertResultOk(t *testing.T) {

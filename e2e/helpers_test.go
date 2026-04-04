@@ -13,46 +13,71 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/authcore/internal/adapter/cache"
-	adaptcrypto "github.com/authcore/internal/adapter/crypto"
-	adaptemail "github.com/authcore/internal/adapter/email"
-	"github.com/authcore/internal/adapter/http/handler"
-	adapthttp "github.com/authcore/internal/adapter/http/oauth"
-	"github.com/authcore/internal/adapter/http/middleware"
-	adaptsms "github.com/authcore/internal/adapter/sms"
-	"github.com/authcore/internal/application/auth"
-	auditsvc "github.com/authcore/internal/application/audit"
-	clientsvc "github.com/authcore/internal/application/client"
-	"github.com/authcore/internal/application/discovery"
-	"github.com/authcore/internal/application/jwks"
-	mfasvc "github.com/authcore/internal/application/mfa"
-	providersvc "github.com/authcore/internal/application/provider"
-	rbacsvc "github.com/authcore/internal/application/rbac"
-	"github.com/authcore/internal/application/social"
-	tenantsvc "github.com/authcore/internal/application/tenant"
-	usersvc "github.com/authcore/internal/application/user"
-	"github.com/authcore/internal/config"
-	"github.com/authcore/internal/domain/tenant"
-	"github.com/authcore/pkg/sdk/health"
-	"github.com/authcore/pkg/sdk/httputil"
+	"github.com/authplex/internal/adapter/cache"
+	adaptcrypto "github.com/authplex/internal/adapter/crypto"
+	"github.com/authplex/internal/adapter/http/handler"
+	adapthttp "github.com/authplex/internal/adapter/http/oauth"
+	"github.com/authplex/internal/adapter/http/middleware"
+	adaptsms "github.com/authplex/internal/adapter/sms"
+	"github.com/authplex/internal/application/auth"
+	auditsvc "github.com/authplex/internal/application/audit"
+	clientsvc "github.com/authplex/internal/application/client"
+	"github.com/authplex/internal/application/discovery"
+	"github.com/authplex/internal/application/jwks"
+	mfasvc "github.com/authplex/internal/application/mfa"
+	providersvc "github.com/authplex/internal/application/provider"
+	rbacsvc "github.com/authplex/internal/application/rbac"
+	"github.com/authplex/internal/application/social"
+	tenantsvc "github.com/authplex/internal/application/tenant"
+	usersvc "github.com/authplex/internal/application/user"
+	webhooksvc "github.com/authplex/internal/application/webhook"
+	"github.com/authplex/internal/config"
+	"github.com/authplex/internal/domain/tenant"
+	"github.com/authplex/pkg/sdk/health"
+	"github.com/authplex/pkg/sdk/httputil"
 	"github.com/stretchr/testify/require"
 )
 
 const testAdminKey = "test-admin-key-e2e"
 
+// capturingEmailSender captures the last OTP code sent via email.
+type capturingEmailSender struct {
+	mu       sync.Mutex
+	lastCode map[string]string // key: email address -> code
+}
+
+func newCapturingEmailSender() *capturingEmailSender {
+	return &capturingEmailSender{lastCode: make(map[string]string)}
+}
+
+func (s *capturingEmailSender) SendOTP(_ context.Context, to, code string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastCode[to] = code
+	return nil
+}
+
+func (s *capturingEmailSender) getCode(email string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.lastCode[email]
+}
+
 // fullTestEnv holds references to the test server and key services
 // for the full-featured E2E test setup.
 type fullTestEnv struct {
-	server   *httptest.Server
-	jwksSvc  *jwks.Service
-	adminKey string // for management API auth
+	server      *httptest.Server
+	jwksSvc     *jwks.Service
+	adminKey    string // for management API auth
+	emailSender *capturingEmailSender
 }
 
-// setupFullTestServer creates a complete AuthCore server with ALL routes wired,
-// matching the production wiring in cmd/authcore/main.go but using in-memory repos.
+// setupFullTestServer creates a complete AuthPlex server with ALL routes wired,
+// matching the production wiring in cmd/authplex/main.go but using in-memory repos.
 // This includes RBAC, audit, MFA (TOTP + WebAuthn), rate limiting, and admin auth.
 func setupFullTestServer(t *testing.T) *fullTestEnv {
 	t.Helper()
@@ -101,8 +126,9 @@ func setupFullTestServer(t *testing.T) *fullTestEnv {
 	mfaService := mfasvc.NewService(cache.NewInMemoryTOTPRepository(), cache.NewInMemoryChallengeRepository(), authSvc, log)
 	mfaService.WithWebAuthn(webauthnRepo, "localhost", "Test", []string{"http://localhost"})
 
+	emailSender := newCapturingEmailSender()
 	userService := usersvc.NewService(cache.NewInMemoryUserRepository(), cache.NewInMemorySessionRepository(), hasher, log).
-		WithOTP(cache.NewInMemoryOTPRepository(), adaptemail.NewConsoleSender(log), adaptsms.NewConsoleSender(log))
+		WithOTP(cache.NewInMemoryOTPRepository(), emailSender, adaptsms.NewConsoleSender(log))
 
 	authSvc.WithUserValidator(userService)
 
@@ -130,6 +156,8 @@ func setupFullTestServer(t *testing.T) *fullTestEnv {
 	userHandler := handler.NewUserHandler(userService)
 	rbacHandler := handler.NewRBACHandler(rbacService)
 	auditHandler := handler.NewAuditHandler(auditService)
+	webhookService := webhooksvc.NewService(cache.NewInMemoryWebhookRepository(), log)
+	webhookHandler := handler.NewWebhookHandler(webhookService)
 	tenantHandler := handler.NewTenantHandler(tenantSvc)
 
 	mux := http.NewServeMux()
@@ -200,6 +228,10 @@ func setupFullTestServer(t *testing.T) *fullTestEnv {
 			}
 			return
 		}
+		if strings.HasSuffix(r.URL.Path, "/users") && !strings.Contains(r.URL.Path, "/users/") {
+			userHandler.HandleListUsers(w, r)
+			return
+		}
 		if strings.Contains(r.URL.Path, "/users/") && strings.Contains(r.URL.Path, "/permissions") {
 			rbacHandler.HandleUserPermissions(w, r)
 			return
@@ -213,6 +245,14 @@ func setupFullTestServer(t *testing.T) *fullTestEnv {
 				rbacHandler.HandleRole(w, r)
 			} else {
 				rbacHandler.HandleRoles(w, r)
+			}
+			return
+		}
+		if strings.Contains(r.URL.Path, "/webhooks") {
+			if strings.Count(r.URL.Path, "/") >= 4 {
+				webhookHandler.HandleWebhook(w, r)
+			} else {
+				webhookHandler.HandleWebhooks(w, r)
 			}
 			return
 		}
@@ -230,9 +270,10 @@ func setupFullTestServer(t *testing.T) *fullTestEnv {
 	})
 
 	return &fullTestEnv{
-		server:   httptest.NewServer(middleware.NewCORS("*").Middleware(mux)),
-		jwksSvc:  jwksSvc,
-		adminKey: testAdminKey,
+		server:      httptest.NewServer(middleware.NewCORS("*").Middleware(mux)),
+		jwksSvc:     jwksSvc,
+		adminKey:    testAdminKey,
+		emailSender: emailSender,
 	}
 }
 

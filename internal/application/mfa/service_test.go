@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/authcore/internal/application/auth"
-	"github.com/authcore/internal/application/jwks"
-	domainmfa "github.com/authcore/internal/domain/mfa"
-	"github.com/authcore/internal/domain/jwk"
-	"github.com/authcore/internal/domain/token"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/application/auth"
+	"github.com/authplex/internal/application/jwks"
+	domainmfa "github.com/authplex/internal/domain/mfa"
+	"github.com/authplex/internal/domain/jwk"
+	"github.com/authplex/internal/domain/token"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -738,4 +738,10 @@ func TestBuildWebAuthnUser_WithCredentials(t *testing.T) {
 	require.Nil(t, appErr)
 	assert.Len(t, user.WebAuthnCredentials(), 1)
 	assert.Equal(t, "user-1", user.WebAuthnDisplayName()) // falls back to subject
+}
+
+func TestMFASvc_WithAudit(t *testing.T) {
+	svc := NewService(newMockTOTPRepo(), newMockChallengeRepo(), newTestAuthSvc(), slog.Default())
+	result := svc.WithAudit(nil)
+	assert.NotNil(t, result)
 }

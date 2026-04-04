@@ -1,4 +1,4 @@
-# AuthCore — Headless Architecture
+# AuthPlex — Headless Architecture
 
 > **Headless** = No built-in UI. Pure API and protocol endpoints. Your frontend, your UX, your brand.
 
@@ -21,9 +21,9 @@ Traditional IAM (Keycloak, Auth0):
 │  └──────────────────────────────────┘   │
 └─────────────────────────────────────────┘
 
-Headless IAM (AuthCore):
+Headless IAM (AuthPlex):
 ┌──────────────────────────┐
-│       AuthCore Server     │
+│       AuthPlex Server     │
 │  ┌────────────────────┐  │
 │  │  API Layer ONLY     │  │  ← Pure JSON endpoints
 │  │  (OIDC/OAuth/REST)  │  │  ← No HTML, no CSS, no JS
@@ -86,7 +86,7 @@ Headless IAM (AuthCore):
 ```
 ┌───────────────────────────────────────────────────────────┐
 │                     Client Layer                           │
-│  Your frontend calls AuthCore APIs directly                │
+│  Your frontend calls AuthPlex APIs directly                │
 │                                                            │
 │  React App    Mobile App    CLI Tool    Backend Service    │
 │  (browser)    (native)      (terminal)  (server-to-server)│
@@ -136,7 +136,7 @@ Headless IAM (AuthCore):
 
 ## Hexagonal Architecture (Ports & Adapters)
 
-AuthCore uses **hexagonal architecture** — the reason it can be headless, embeddable, and testable.
+AuthPlex uses **hexagonal architecture** — the reason it can be headless, embeddable, and testable.
 
 ```
                     ┌─────────────────────┐
@@ -196,11 +196,11 @@ AuthCore uses **hexagonal architecture** — the reason it can be headless, embe
 
 ### Pattern 1: Direct API Calls (Most Common)
 
-Your frontend calls AuthCore directly. No SDK required.
+Your frontend calls AuthPlex directly. No SDK required.
 
 ```
 ┌─────────────┐         ┌──────────────┐         ┌─────────────┐
-│  React App  │ ──API──►│   AuthCore   │ ──SQL──►│  Postgres   │
+│  React App  │ ──API──►│   AuthPlex   │ ──SQL──►│  Postgres   │
 │  (browser)  │◄──JSON──│   (:8080)    │◄────────│             │
 └─────────────┘         └──────────────┘         └─────────────┘
 ```
@@ -222,13 +222,13 @@ Any OIDC library in any language can auto-configure by pointing at the discovery
 
 ```
 ┌──────────────────┐         ┌──────────────┐
-│  Spring Boot     │ ──OIDC──│   AuthCore   │
+│  Spring Boot     │ ──OIDC──│   AuthPlex   │
 │  (auto-config)   │◄────────│   (:8080)    │
 └──────────────────┘         └──────────────┘
 ```
 
 ```yaml
-# Spring Boot — zero AuthCore SDK needed
+# Spring Boot — zero AuthPlex SDK needed
 spring:
   security:
     oauth2:
@@ -240,7 +240,7 @@ spring:
 ```
 
 ```csharp
-// ASP.NET — zero AuthCore SDK needed
+// ASP.NET — zero AuthPlex SDK needed
 builder.Services.AddAuthentication()
     .AddJwtBearer(o => o.Authority = "https://auth.myapp.com");
 ```
@@ -251,32 +251,32 @@ For convenience. Available in Java, .NET, Node.js, Python.
 
 ```
 ┌─────────────┐    ┌──────────────┐    ┌──────────────┐
-│  Your Code  │───►│  AuthCore    │───►│   AuthCore   │
+│  Your Code  │───►│  AuthPlex    │───►│   AuthPlex   │
 │             │    │  SDK (HTTP)  │    │   Server     │
 └─────────────┘    └──────────────┘    └──────────────┘
 ```
 
 ```python
-from authcore_sdk import AuthCore
-auth = AuthCore(base_url="https://auth.myapp.com", tenant_id="my-tenant")
+from authplex_sdk import AuthPlex
+auth = AuthPlex(base_url="https://auth.myapp.com", tenant_id="my-tenant")
 user = auth.register("user@example.com", "secret", "Jane")
 session = auth.login("user@example.com", "secret")
 ```
 
 ### Pattern 4: Embedded Go SDK (No Server)
 
-AuthCore runs inside your Go application. No HTTP, no separate process.
+AuthPlex runs inside your Go application. No HTTP, no separate process.
 
 ```
 ┌─────────────────────────────────┐
 │         Your Go App              │
 │                                  │
-│  auth := authcore.New(cfg, db)   │
+│  auth := authplex.New(cfg, db)   │
 │  auth.User.Register(ctx, req)    │  ← Direct function call
 │  auth.Auth.VerifyJWT(token)      │  ← No network hop
 │                                  │
 │  ┌───────────────────────────┐  │
-│  │  AuthCore (library mode)  │  │
+│  │  AuthPlex (library mode)  │  │
 │  │  Same code as server      │  │
 │  │  Different entry point    │  │
 │  └───────────────────────────┘  │
@@ -285,7 +285,7 @@ AuthCore runs inside your Go application. No HTTP, no separate process.
 
 ---
 
-## What AuthCore Does NOT Have
+## What AuthPlex Does NOT Have
 
 | Feature | Why not |
 |---------|---------|
@@ -294,8 +294,8 @@ AuthCore runs inside your Go application. No HTTP, no separate process.
 | Password reset UI | You build it. Email template is yours |
 | Consent screen | Not needed — you control scopes at the client level |
 | Account settings page | You build it. Call `/userinfo` + update APIs |
-| Admin dashboard HTML | Separate React SPA (`authcore-admin` repo) |
-| Email templates | Your email service, your templates. AuthCore sends raw OTP codes |
+| Admin dashboard HTML | Separate React SPA (`authplex-admin` repo) |
+| Email templates | Your email service, your templates. AuthPlex sends raw OTP codes |
 | Hosted login page | No redirect-based login. Auth stays in YOUR app |
 | Theme engine | No themes. You ARE the theme |
 | Branding settings | No branding. It's YOUR brand everywhere |
@@ -304,7 +304,7 @@ AuthCore runs inside your Go application. No HTTP, no separate process.
 
 ## Comparison: Headless vs Full-Stack IAM
 
-| Aspect | **AuthCore (Headless)** | **Keycloak (Full-Stack)** | **Auth0 (Hosted)** |
+| Aspect | **AuthPlex (Headless)** | **Keycloak (Full-Stack)** | **Auth0 (Hosted)** |
 |--------|:----------------------:|:------------------------:|:------------------:|
 | Login UI | You build | Built-in (FreeMarker) | Hosted page (Universal Login) |
 | UX control | 100% | Theme customization | Limited CSS customization |
@@ -331,7 +331,7 @@ Every interaction follows the same pattern — JSON in, JSON out.
 ### Registration
 
 ```
-Client                          AuthCore
+Client                          AuthPlex
   │                                │
   │  POST /register                │
   │  X-Tenant-ID: acme            │
@@ -348,7 +348,7 @@ Client                          AuthCore
 ### Login → Session → API Call
 
 ```
-Client                          AuthCore                Your API
+Client                          AuthPlex                Your API
   │                                │                       │
   │  POST /login                   │                       │
   │  {email, password}            │                       │
@@ -391,7 +391,7 @@ Every step is an API call. Your frontend decides:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        AuthCore                              │
+│                        AuthPlex                              │
 │                                                              │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
 │  │  Tenant: acme │  │ Tenant: corp │  │ Tenant: dev  │     │
@@ -415,7 +415,7 @@ Resolution: `X-Tenant-ID: acme` header or subdomain (`acme.auth.myapp.com`).
 
 ## When to Choose Headless
 
-**Choose AuthCore (headless) when:**
+**Choose AuthPlex (headless) when:**
 - You're building a product with custom auth UX
 - You have a frontend team that owns the login experience
 - You need multi-tenant SaaS with per-tenant branding

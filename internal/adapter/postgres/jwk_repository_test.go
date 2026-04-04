@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/authcore/internal/domain/jwk"
+	"github.com/authplex/internal/domain/jwk"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

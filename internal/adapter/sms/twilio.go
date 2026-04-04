@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/authcore/internal/domain/otp"
+	"github.com/authplex/internal/domain/otp"
 )
 
 // TwilioSender sends OTP via Twilio SMS API.

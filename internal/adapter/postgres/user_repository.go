@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/authcore/internal/domain/user"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/user"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // UserRepository implements user.Repository using PostgreSQL.
@@ -119,6 +119,44 @@ func (r *UserRepository) IncrementTokenVersion(ctx context.Context, id, tenantID
 		return apperrors.New(apperrors.ErrNotFound, "user not found")
 	}
 	return nil
+}
+
+func (r *UserRepository) ListByTenant(ctx context.Context, tenantID string, offset, limit int) ([]user.User, int, error) {
+	ctx, cancel := WithQueryTimeout(ctx)
+	defer cancel()
+
+	var total int
+	countErr := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM users WHERE tenant_id = $1 AND deleted_at IS NULL`, tenantID).Scan(&total)
+	if countErr != nil {
+		return nil, 0, apperrors.Wrap(apperrors.ErrInternal, "failed to count users", countErr)
+	}
+
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, tenant_id, email, phone, password_hash, name, email_verified, phone_verified, enabled, token_version, created_at, updated_at, deleted_at
+		 FROM users WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		tenantID, limit, offset)
+	if err != nil {
+		return nil, 0, apperrors.Wrap(apperrors.ErrInternal, "failed to list users", err)
+	}
+	defer rows.Close()
+
+	var users []user.User
+	for rows.Next() {
+		var u user.User
+		var deletedAt *time.Time
+		if scanErr := rows.Scan(&u.ID, &u.TenantID, &u.Email, &u.Phone, &u.PasswordHash, &u.Name,
+			&u.EmailVerified, &u.PhoneVerified, &u.Enabled, &u.TokenVersion,
+			&u.CreatedAt, &u.UpdatedAt, &deletedAt); scanErr != nil {
+			return nil, 0, apperrors.Wrap(apperrors.ErrInternal, "failed to scan user", scanErr)
+		}
+		u.DeletedAt = deletedAt
+		users = append(users, u)
+	}
+	if users == nil {
+		users = []user.User{}
+	}
+	return users, total, nil
 }
 
 func (r *UserRepository) scanUser(row *sql.Row) (user.User, error) {

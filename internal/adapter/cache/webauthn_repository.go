@@ -5,8 +5,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/authcore/internal/domain/mfa"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/mfa"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // InMemoryWebAuthnRepository implements mfa.WebAuthnRepository.

@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/authcore/internal/application/social"
-	"github.com/authcore/pkg/sdk/httputil"
+	"github.com/authplex/internal/application/social"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // SocialHandler handles social login endpoints.
@@ -38,7 +38,7 @@ func (h *SocialHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Redirect back to the original client with the AuthCore auth code
+	// Redirect back to the original client with the AuthPlex auth code
 	redirectURL, err := url.Parse(resp.RedirectURI)
 	if err != nil {
 		httputil.WriteError(w, httputil.MethodNotAllowed("invalid redirect_uri")) //nolint:errcheck

@@ -8,7 +8,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const tracerName = "authcore"
+const tracerName = "authplex"
 
 // Tracing is middleware that creates OpenTelemetry spans for each HTTP request.
 type Tracing struct {

@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"net/url"
 
-	samlsvc "github.com/authcore/internal/application/saml"
-	"github.com/authcore/pkg/sdk/httputil"
+	samlsvc "github.com/authplex/internal/application/saml"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // SAMLHandler handles SAML 2.0 SP endpoints.
@@ -111,7 +111,7 @@ func (h *SAMLHandler) HandleACS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Redirect back to the original client with the AuthCore auth code
+	// Redirect back to the original client with the AuthPlex auth code
 	redirectURL, err := url.Parse(resp.RedirectURI)
 	if err != nil {
 		httputil.WriteError(w, httputil.MethodNotAllowed("invalid redirect_uri")) //nolint:errcheck

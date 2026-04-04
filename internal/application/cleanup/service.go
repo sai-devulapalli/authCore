@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/authcore/internal/application/jwks"
-	"github.com/authcore/internal/domain/jwk"
-	"github.com/authcore/internal/domain/tenant"
-	"github.com/authcore/internal/domain/token"
+	"github.com/authplex/internal/application/jwks"
+	"github.com/authplex/internal/domain/jwk"
+	"github.com/authplex/internal/domain/tenant"
+	"github.com/authplex/internal/domain/token"
 )
 
 // Service runs periodic cleanup and rotation tasks.

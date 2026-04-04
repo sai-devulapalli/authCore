@@ -16,26 +16,26 @@ import (
 
 	"context"
 
-	"github.com/authcore/internal/adapter/cache"
-	adaptcrypto "github.com/authcore/internal/adapter/crypto"
-	adaptemail "github.com/authcore/internal/adapter/email"
-	"github.com/authcore/internal/adapter/http/handler"
-	adapthttp "github.com/authcore/internal/adapter/http/oauth"
-	"github.com/authcore/internal/adapter/http/middleware"
-	adaptsms "github.com/authcore/internal/adapter/sms"
-	"github.com/authcore/internal/application/auth"
-	clientsvc "github.com/authcore/internal/application/client"
-	"github.com/authcore/internal/application/discovery"
-	"github.com/authcore/internal/application/jwks"
-	mfasvc "github.com/authcore/internal/application/mfa"
-	providersvc "github.com/authcore/internal/application/provider"
-	"github.com/authcore/internal/application/social"
-	tenantsvc "github.com/authcore/internal/application/tenant"
-	usersvc "github.com/authcore/internal/application/user"
-	"github.com/authcore/internal/config"
-	"github.com/authcore/internal/domain/tenant"
-	"github.com/authcore/pkg/sdk/health"
-	"github.com/authcore/pkg/sdk/httputil"
+	"github.com/authplex/internal/adapter/cache"
+	adaptcrypto "github.com/authplex/internal/adapter/crypto"
+	adaptemail "github.com/authplex/internal/adapter/email"
+	"github.com/authplex/internal/adapter/http/handler"
+	adapthttp "github.com/authplex/internal/adapter/http/oauth"
+	"github.com/authplex/internal/adapter/http/middleware"
+	adaptsms "github.com/authplex/internal/adapter/sms"
+	"github.com/authplex/internal/application/auth"
+	clientsvc "github.com/authplex/internal/application/client"
+	"github.com/authplex/internal/application/discovery"
+	"github.com/authplex/internal/application/jwks"
+	mfasvc "github.com/authplex/internal/application/mfa"
+	providersvc "github.com/authplex/internal/application/provider"
+	"github.com/authplex/internal/application/social"
+	tenantsvc "github.com/authplex/internal/application/tenant"
+	usersvc "github.com/authplex/internal/application/user"
+	"github.com/authplex/internal/config"
+	"github.com/authplex/internal/domain/tenant"
+	"github.com/authplex/pkg/sdk/health"
+	"github.com/authplex/pkg/sdk/httputil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -45,7 +45,7 @@ type testEnv struct {
 	jwksSvc *jwks.Service
 }
 
-// setupInMemoryTestServer creates a full AuthCore server with in-memory storage.
+// setupInMemoryTestServer creates a full AuthPlex server with in-memory storage.
 // No Docker required.
 func setupInMemoryTestServer(t *testing.T) *testEnv {
 	t.Helper()

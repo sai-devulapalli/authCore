@@ -1,4 +1,4 @@
-BINARY_NAME := authcore
+BINARY_NAME := authplex
 BUILD_DIR := ./bin
 VERSION ?= dev
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
@@ -10,13 +10,13 @@ all: lint test-unit build
 
 ## Build
 build:
-	go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/authcore
+	go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/authplex
 
 ## Test
 # Unit tests exclude infrastructure adapters (postgres, cache) that require external services.
 # Those packages are covered by functional tests (make test-func).
 test-unit:
-	go test -v -race -count=1 -coverprofile=coverage-unit.out $$(go list ./... | grep -v '/adapter/postgres' | grep -v '/adapter/mssql' | grep -v '/adapter/sms' | grep -v '/adapter/email' | grep -v '/adapter/redis' | grep -v 'cmd/authcore')
+	go test -v -race -count=1 -coverprofile=coverage-unit.out $$(go list ./... | grep -v '/adapter/postgres' | grep -v '/adapter/mssql' | grep -v '/adapter/sms' | grep -v '/adapter/email' | grep -v '/adapter/redis' | grep -v 'cmd/authplex')
 
 test-func:
 	go test -v -race -count=1 -tags=functional -coverprofile=coverage-func.out ./...

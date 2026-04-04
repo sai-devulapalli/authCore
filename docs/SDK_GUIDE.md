@@ -1,18 +1,18 @@
-# AuthCore — SDK Guide
+# AuthPlex — SDK Guide
 
 ## Overview
 
-AuthCore provides SDKs for **5 languages** plus the embedded **Go SDK**:
+AuthPlex provides SDKs for **5 languages** plus the embedded **Go SDK**:
 
 | SDK | Language | Package | Install |
 |-----|----------|---------|---------|
-| Go (embedded) | Go | `pkg/authcore` | `go get github.com/sai-devulapalli/authCore` |
-| Java | Java 11+ | `com.authcore.sdk` | Maven/Gradle |
-| .NET | C# (.NET 6+) | `AuthCore.Sdk` | NuGet |
-| Node.js | JavaScript/TypeScript | `@authcore/sdk` | `npm install @authcore/sdk` |
-| Python | Python 3.10+ | `authcore-sdk` | `pip install authcore-sdk` |
+| Go (embedded) | Go | `pkg/authplex` | `go get github.com/sai-devulapalli/authCore` |
+| Java | Java 11+ | `com.authplex.sdk` | Maven/Gradle |
+| .NET | C# (.NET 6+) | `AuthPlex.Sdk` | NuGet |
+| Node.js | JavaScript/TypeScript | `@authplex/sdk` | `npm install @authplex/sdk` |
+| Python | Python 3.10+ | `authplex-sdk` | `pip install authplex-sdk` |
 
-All wrapper SDKs (Java, .NET, Node.js, Python) are HTTP clients that call the AuthCore server API. The Go SDK can run as an **embedded library** (direct function calls, no HTTP).
+All wrapper SDKs (Java, .NET, Node.js, Python) are HTTP clients that call the AuthPlex server API. The Go SDK can run as an **embedded library** (direct function calls, no HTTP).
 
 ---
 
@@ -26,12 +26,12 @@ All wrapper SDKs (Java, .NET, Node.js, Python) are HTTP clients that call the Au
 ```go
 import (
     "database/sql"
-    "github.com/sai-devulapalli/authCore/pkg/authcore"
+    "github.com/sai-devulapalli/authCore/pkg/authplex"
     _ "github.com/jackc/pgx/v5/stdlib"
 )
 
 db, _ := sql.Open("pgx", "postgres://localhost:5432/myapp")
-auth := authcore.New(authcore.Config{
+auth := authplex.New(authplex.Config{
     Issuer:     "https://myapp.com",
     SessionTTL: 24 * time.Hour,
     AccessTTL:  1 * time.Hour,
@@ -43,9 +43,9 @@ auth := authcore.New(authcore.Config{
 <summary><b>Java</b></summary>
 
 ```java
-import com.authcore.sdk.AuthCoreClient;
+import com.authplex.sdk.AuthPlexClient;
 
-AuthCoreClient auth = AuthCoreClient.builder()
+AuthPlexClient auth = AuthPlexClient.builder()
     .baseUrl("http://localhost:8080")
     .tenantId("my-tenant")
     .clientId("my-app")
@@ -58,9 +58,9 @@ AuthCoreClient auth = AuthCoreClient.builder()
 <summary><b>C# (.NET)</b></summary>
 
 ```csharp
-using AuthCore.Sdk;
+using AuthPlex.Sdk;
 
-var auth = new AuthCoreClient(new AuthCoreOptions
+var auth = new AuthPlexClient(new AuthPlexOptions
 {
     BaseUrl      = "http://localhost:8080",
     TenantId     = "my-tenant",
@@ -74,9 +74,9 @@ var auth = new AuthCoreClient(new AuthCoreOptions
 <summary><b>Node.js</b></summary>
 
 ```javascript
-const { AuthCore } = require('@authcore/sdk');
+const { AuthPlex } = require('@authplex/sdk');
 
-const auth = new AuthCore({
+const auth = new AuthPlex({
   baseUrl:      'http://localhost:8080',
   tenantId:     'my-tenant',
   clientId:     'my-app',
@@ -89,9 +89,9 @@ const auth = new AuthCore({
 <summary><b>Python</b></summary>
 
 ```python
-from authcore_sdk import AuthCore
+from authplex_sdk import AuthPlex
 
-auth = AuthCore(
+auth = AuthPlex(
     base_url="http://localhost:8080",
     tenant_id="my-tenant",
     client_id="my-app",
@@ -108,7 +108,7 @@ auth = AuthCore(
 <summary><b>Go</b></summary>
 
 ```go
-user, err := auth.User.Register(ctx, authcore.RegisterRequest{
+user, err := auth.User.Register(ctx, authplex.RegisterRequest{
     Email:    "user@example.com",
     Password: "secret123",
     Name:     "Jane Doe",
@@ -173,7 +173,7 @@ curl -X POST http://localhost:8080/register \
 <summary><b>Go</b></summary>
 
 ```go
-session, err := auth.User.Login(ctx, authcore.LoginRequest{
+session, err := auth.User.Login(ctx, authplex.LoginRequest{
     Email:    "user@example.com",
     Password: "secret123",
     TenantID: "my-tenant",
@@ -425,14 +425,14 @@ curl -X POST http://localhost:8080/token \
 
 ```go
 // Request OTP
-auth.User.RequestOTP(ctx, authcore.OTPRequest{
+auth.User.RequestOTP(ctx, authplex.OTPRequest{
     Email:    "user@example.com",
     Purpose:  "login",
     TenantID: "my-tenant",
 })
 
 // Verify OTP → creates session
-session, _ := auth.User.VerifyOTP(ctx, authcore.OTPVerifyRequest{
+session, _ := auth.User.VerifyOTP(ctx, authplex.OTPVerifyRequest{
     Email:    "user@example.com",
     Code:     "123456",
     TenantID: "my-tenant",
@@ -509,12 +509,12 @@ curl -X POST http://localhost:8080/otp/verify \
 
 ```go
 // Request reset OTP
-auth.User.RequestOTP(ctx, authcore.OTPRequest{
+auth.User.RequestOTP(ctx, authplex.OTPRequest{
     Email: "user@example.com", Purpose: "reset", TenantID: "my-tenant",
 })
 
 // Reset with OTP code
-auth.User.ResetPassword(ctx, authcore.ResetPasswordRequest{
+auth.User.ResetPassword(ctx, authplex.ResetPasswordRequest{
     Email: "user@example.com", Code: "123456", NewPassword: "newSecret456", TenantID: "my-tenant",
 })
 ```
@@ -721,7 +721,7 @@ curl http://localhost:8080/tenants/my-tenant/users/user-id/permissions \
 
 ```go
 // Configure provider
-auth.Provider.Create(ctx, authcore.ProviderRequest{
+auth.Provider.Create(ctx, authplex.ProviderRequest{
     ProviderType: "google",
     ClientID:     "GOOGLE_CLIENT_ID",
     ClientSecret: "GOOGLE_SECRET",
@@ -919,7 +919,7 @@ curl "http://localhost:8080/tenants/acme/audit?action=login_success&limit=10" \
 ### Protect HTTP Endpoints with JWT Middleware
 
 ```go
-auth := authcore.New(config, db, rdb)
+auth := authplex.New(config, db, rdb)
 mux := http.NewServeMux()
 
 // Public
@@ -930,7 +930,7 @@ mux.Handle("/api/", auth.RequireJWT(http.HandlerFunc(apiHandler)))
 
 // Access claims in handler
 mux.Handle("/api/me", auth.RequireJWT(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-    claims := authcore.ClaimsFromContext(r.Context())
+    claims := authplex.ClaimsFromContext(r.Context())
     fmt.Fprintf(w, "Hello %s, roles: %v", claims.Subject, claims.Roles)
 })))
 ```
@@ -938,11 +938,11 @@ mux.Handle("/api/me", auth.RequireJWT(http.HandlerFunc(func(w http.ResponseWrite
 ### Mount Full OIDC Endpoints on Your Router
 
 ```go
-auth := authcore.New(config, db, rdb)
+auth := authplex.New(config, db, rdb)
 mux := http.NewServeMux()
 
-// Mount all 39 AuthCore endpoints
-auth.MountRoutes(mux, authcore.RouteConfig{
+// Mount all 39 AuthPlex endpoints
+auth.MountRoutes(mux, authplex.RouteConfig{
     TenantMode:  "header",
     CORSOrigins: "*",
     AdminAPIKey: "your-key",
@@ -958,9 +958,9 @@ http.ListenAndServe(":8080", mux)
 
 | Option | Init Code | Best For |
 |--------|-----------|----------|
-| Shared DB | `authcore.New(cfg, yourDB, yourRedis)` | Startups |
-| Separate DB | `authcore.New(cfg, authDB, authRedis)` | Compliance |
-| In-memory | `authcore.New(cfg, nil, nil)` | Dev/testing |
+| Shared DB | `authplex.New(cfg, yourDB, yourRedis)` | Startups |
+| Separate DB | `authplex.New(cfg, authDB, authRedis)` | Compliance |
+| In-memory | `authplex.New(cfg, nil, nil)` | Dev/testing |
 
 ---
 
@@ -1085,7 +1085,7 @@ Your consuming API should validate the `endpoints` claim against the request pat
 
 ```go
 // Example: middleware to enforce endpoint scoping
-claims := authcore.ClaimsFromContext(r.Context())
+claims := authplex.ClaimsFromContext(r.Context())
 if len(claims.Endpoints) > 0 {
     allowed := false
     for _, pattern := range claims.Endpoints {
@@ -1101,9 +1101,9 @@ if len(claims.Endpoints) > 0 {
 
 | Language | Repository |
 |----------|-----------|
-| Go (embedded) | `github.com/sai-devulapalli/authCore/pkg/authcore` |
-| Java | `github.com/sai-devulapalli/authcore-java-sdk` |
-| .NET | `github.com/sai-devulapalli/authcore-dotnet-sdk` |
-| Node.js | `github.com/sai-devulapalli/authcore-js` |
-| Python | `github.com/sai-devulapalli/authcore-python` |
-| Admin UI | `github.com/sai-devulapalli/authcore-admin` |
+| Go (embedded) | `github.com/sai-devulapalli/authCore/pkg/authplex` |
+| Java | `github.com/sai-devulapalli/authplex-java-sdk` |
+| .NET | `github.com/sai-devulapalli/authplex-dotnet-sdk` |
+| Node.js | `github.com/sai-devulapalli/authplex-js` |
+| Python | `github.com/sai-devulapalli/authplex-python` |
+| Admin UI | `github.com/sai-devulapalli/authplex-admin` |

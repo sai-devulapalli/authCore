@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/authcore/internal/domain/rbac"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/rbac"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // AssignmentRepository implements rbac.AssignmentRepository using PostgreSQL.

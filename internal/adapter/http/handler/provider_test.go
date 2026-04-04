@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	providersvc "github.com/authcore/internal/application/provider"
-	"github.com/authcore/internal/domain/identity"
+	providersvc "github.com/authplex/internal/application/provider"
+	"github.com/authplex/internal/domain/identity"
 	"github.com/stretchr/testify/assert"
 )
 

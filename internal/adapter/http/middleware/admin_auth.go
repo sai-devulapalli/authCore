@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/authcore/internal/domain/admin"
-	"github.com/authcore/pkg/sdk/httputil"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/admin"
+	"github.com/authplex/pkg/sdk/httputil"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 type adminContextKey string
@@ -144,10 +144,10 @@ func decodeAdminJWT(tokenStr string) (*AdminContext, error) {
 		return nil, apperrors.New(apperrors.ErrUnauthorized, "invalid JWT claims")
 	}
 
-	// Verify audience contains "authcore-admin"
+	// Verify audience contains "authplex-admin"
 	isAdminToken := false
 	for _, aud := range claims.Audience {
-		if aud == "authcore-admin" {
+		if aud == "authplex-admin" {
 			isAdminToken = true
 			break
 		}

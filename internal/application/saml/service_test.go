@@ -7,11 +7,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/authcore/internal/adapter/cache"
-	adaptcrypto "github.com/authcore/internal/adapter/crypto"
-	"github.com/authcore/internal/application/auth"
-	"github.com/authcore/internal/application/jwks"
-	"github.com/authcore/internal/domain/identity"
+	"github.com/authplex/internal/adapter/cache"
+	adaptcrypto "github.com/authplex/internal/adapter/crypto"
+	"github.com/authplex/internal/application/auth"
+	"github.com/authplex/internal/application/jwks"
+	"github.com/authplex/internal/domain/identity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

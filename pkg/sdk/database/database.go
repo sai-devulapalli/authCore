@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	sdkerrors "github.com/authcore/pkg/sdk/errors"
+	sdkerrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // Driver identifies the database backend.

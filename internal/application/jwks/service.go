@@ -4,9 +4,9 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/authcore/internal/domain/jwk"
-	"github.com/authcore/internal/domain/tenant"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/jwk"
+	"github.com/authplex/internal/domain/tenant"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // Service provides JWKS management operations.

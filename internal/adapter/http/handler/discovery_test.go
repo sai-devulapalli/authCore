@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/authcore/internal/application/discovery"
-	"github.com/authcore/internal/domain/oidc"
+	"github.com/authplex/internal/application/discovery"
+	"github.com/authplex/internal/domain/oidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

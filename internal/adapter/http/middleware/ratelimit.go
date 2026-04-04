@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	apperrors "github.com/authcore/pkg/sdk/errors"
-	"github.com/authcore/pkg/sdk/httputil"
+	apperrors "github.com/authplex/pkg/sdk/errors"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // RateLimiter is middleware that limits requests per IP using a sliding window.

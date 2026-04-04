@@ -3,10 +3,10 @@ package handler
 import (
 	"net/http"
 
-	webhooksvc "github.com/authcore/internal/application/webhook"
-	"github.com/authcore/internal/domain/webhook"
-	sdkerrors "github.com/authcore/pkg/sdk/errors"
-	"github.com/authcore/pkg/sdk/httputil"
+	webhooksvc "github.com/authplex/internal/application/webhook"
+	"github.com/authplex/internal/domain/webhook"
+	sdkerrors "github.com/authplex/pkg/sdk/errors"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // WebhookHandler serves the webhook management API.

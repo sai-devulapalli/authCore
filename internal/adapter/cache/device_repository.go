@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/authcore/internal/domain/token"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/token"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // InMemoryDeviceRepository implements token.DeviceCodeRepository.

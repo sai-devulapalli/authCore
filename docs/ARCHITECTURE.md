@@ -1,4 +1,4 @@
-# AuthCore — Architecture
+# AuthPlex — Architecture
 
 ## System Architecture
 
@@ -157,7 +157,7 @@ HTTP Request
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│                    AuthCore Server                     │
+│                    AuthPlex Server                     │
 ├──────────────────────────────────────────────────────┤
 │                                                       │
 │   Environment = "local"                               │

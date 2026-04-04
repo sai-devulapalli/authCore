@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/authcore/internal/domain/tenant"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/tenant"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // InMemoryTenantRepository implements tenant.Repository using an in-memory map.

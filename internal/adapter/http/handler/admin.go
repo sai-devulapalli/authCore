@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"time"
 
-	adminsvc "github.com/authcore/internal/application/admin"
-	"github.com/authcore/internal/application/jwks"
-	"github.com/authcore/internal/domain/admin"
-	"github.com/authcore/internal/domain/tenant"
-	"github.com/authcore/internal/domain/token"
-	apperrors "github.com/authcore/pkg/sdk/errors"
-	"github.com/authcore/pkg/sdk/httputil"
+	adminsvc "github.com/authplex/internal/application/admin"
+	"github.com/authplex/internal/application/jwks"
+	"github.com/authplex/internal/domain/admin"
+	"github.com/authplex/internal/domain/tenant"
+	"github.com/authplex/internal/domain/token"
+	apperrors "github.com/authplex/pkg/sdk/errors"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // AdminHandler serves the admin user management API.
@@ -127,17 +127,17 @@ func (h *AdminHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 
 // signAdminJWT creates a signed JWT for an admin user.
 func (h *AdminHandler) signAdminJWT(r *http.Request, adminUser *admin.AdminUser) (string, *apperrors.AppError) {
-	// Use "default" tenant for admin key management
-	const adminTenantID = "default"
+	// Admin has its own dedicated signing key, independent of any tenant
+	const adminKeyNamespace = "__admin__"
 
-	kp, appErr := h.jwksSvc.GetActiveKeyPair(r.Context(), adminTenantID)
+	kp, appErr := h.jwksSvc.GetActiveKeyPair(r.Context(), adminKeyNamespace)
 	if appErr != nil {
-		// Auto-provision signing key
+		// Auto-provision a dedicated admin signing key
 		kid, err := generateAdminJTI()
 		if err != nil {
 			return "", apperrors.Wrap(apperrors.ErrInternal, "failed to generate key ID", err)
 		}
-		kp, appErr = h.jwksSvc.EnsureKeyPair(r.Context(), adminTenantID, kid, tenant.RS256)
+		kp, appErr = h.jwksSvc.EnsureKeyPair(r.Context(), adminKeyNamespace, kid, tenant.RS256)
 		if appErr != nil {
 			return "", apperrors.Wrap(apperrors.ErrInternal, "no signing key available", appErr)
 		}
@@ -152,7 +152,7 @@ func (h *AdminHandler) signAdminJWT(r *http.Request, adminUser *admin.AdminUser)
 	claims := token.Claims{
 		Issuer:    h.issuer,
 		Subject:   adminUser.ID,
-		Audience:  []string{"authcore-admin"},
+		Audience:  []string{"authplex-admin"},
 		ExpiresAt: now.Add(1 * time.Hour).Unix(),
 		IssuedAt:  now.Unix(),
 		JWTID:     jti,

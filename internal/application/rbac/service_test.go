@@ -5,8 +5,9 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/authcore/internal/adapter/cache"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/adapter/cache"
+	auditsvc "github.com/authplex/internal/application/audit"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -115,4 +116,57 @@ func TestUpdateRole(t *testing.T) {
 	})
 	require.Nil(t, appErr)
 	assert.Len(t, updated.Permissions, 2)
+}
+
+func TestWithAudit_RBAC(t *testing.T) {
+	svc := newTestService()
+	result := svc.WithAudit(nil)
+	assert.NotNil(t, result)
+}
+
+func TestAssignRole_WithAuditSvc(t *testing.T) {
+	roleRepo := cache.NewInMemoryRoleRepository()
+	assignRepo := cache.NewInMemoryAssignmentRepository(roleRepo)
+	auditRepo := cache.NewInMemoryAuditRepository()
+	auditSvc := auditsvc.NewService(auditRepo, slog.Default())
+	svc := NewService(roleRepo, assignRepo, slog.Default()).WithAudit(auditSvc)
+
+	role, _ := svc.CreateRole(context.Background(), CreateRoleRequest{
+		Name: "viewer", TenantID: "t1",
+	})
+	appErr := svc.AssignRole(context.Background(), "user-1", role.ID, "t1")
+	require.Nil(t, appErr)
+}
+
+func TestRevokeRole_WithAuditSvc(t *testing.T) {
+	roleRepo := cache.NewInMemoryRoleRepository()
+	assignRepo := cache.NewInMemoryAssignmentRepository(roleRepo)
+	auditRepo := cache.NewInMemoryAuditRepository()
+	auditSvc := auditsvc.NewService(auditRepo, slog.Default())
+	svc := NewService(roleRepo, assignRepo, slog.Default()).WithAudit(auditSvc)
+
+	role, _ := svc.CreateRole(context.Background(), CreateRoleRequest{
+		Name: "viewer", TenantID: "t1",
+	})
+	svc.AssignRole(context.Background(), "user-1", role.ID, "t1") //nolint:errcheck
+	appErr := svc.RevokeRole(context.Background(), "user-1", role.ID, "t1")
+	require.Nil(t, appErr)
+}
+
+func TestDeleteRole_NotFound(t *testing.T) {
+	svc := newTestService()
+	appErr := svc.DeleteRole(context.Background(), "nonexistent", "t1")
+	require.NotNil(t, appErr)
+}
+
+func TestGetRole_NotFound(t *testing.T) {
+	svc := newTestService()
+	_, appErr := svc.GetRole(context.Background(), "nonexistent", "t1")
+	require.NotNil(t, appErr)
+}
+
+func TestUpdateRole_NotFound(t *testing.T) {
+	svc := newTestService()
+	_, appErr := svc.UpdateRole(context.Background(), "nonexistent", UpdateRoleRequest{TenantID: "t1"})
+	require.NotNil(t, appErr)
 }

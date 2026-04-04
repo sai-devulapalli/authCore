@@ -12,6 +12,7 @@ type Repository interface {
 	Delete(ctx context.Context, id, tenantID string) error
 	HardDelete(ctx context.Context, id, tenantID string) error // GDPR right to erasure
 	IncrementTokenVersion(ctx context.Context, id, tenantID string) error
+	ListByTenant(ctx context.Context, tenantID string, offset, limit int) ([]User, int, error)
 }
 
 // SessionRepository is the port interface for session persistence.

@@ -3,9 +3,9 @@ package handler
 import (
 	"net/http"
 
-	"github.com/authcore/internal/application/discovery"
-	"github.com/authcore/internal/domain/shared"
-	"github.com/authcore/pkg/sdk/httputil"
+	"github.com/authplex/internal/application/discovery"
+	"github.com/authplex/internal/domain/shared"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // DiscoveryHandler serves the OIDC discovery document.

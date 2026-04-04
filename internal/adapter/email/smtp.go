@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/smtp"
 
-	"github.com/authcore/internal/domain/otp"
+	"github.com/authplex/internal/domain/otp"
 )
 
 // SMTPSender sends OTP via SMTP.

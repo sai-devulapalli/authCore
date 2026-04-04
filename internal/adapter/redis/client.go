@@ -7,7 +7,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Client wraps the Redis client for AuthCore.
+// Client wraps the Redis client for AuthPlex.
 type Client struct {
 	rdb *redis.Client
 }

@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/authcore/internal/domain/jwk"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/jwk"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // JWKRepository implements jwk.Repository using PostgreSQL.

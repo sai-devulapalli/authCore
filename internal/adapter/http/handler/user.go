@@ -2,11 +2,13 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
-	usersvc "github.com/authcore/internal/application/user"
-	"github.com/authcore/internal/domain/shared"
-	"github.com/authcore/pkg/sdk/httputil"
+	usersvc "github.com/authplex/internal/application/user"
+	"github.com/authplex/internal/domain/shared"
+	sdkerrors "github.com/authplex/pkg/sdk/errors"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // UserHandler serves user authentication endpoints.
@@ -182,6 +184,39 @@ func (h *UserHandler) HandleResetPassword(w http.ResponseWriter, r *http.Request
 	}
 
 	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "password_reset"}) //nolint:errcheck
+}
+
+// HandleListUsers serves GET /tenants/{tid}/users.
+func (h *UserHandler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		httputil.WriteError(w, httputil.MethodNotAllowed(r.Method)) //nolint:errcheck
+		return
+	}
+
+	tenantID := extractPathSegment(r.URL.Path, "tenants", 1)
+	if tenantID == "" {
+		httputil.WriteError(w, sdkerrors.New(sdkerrors.ErrBadRequest, "tenant_id is required")) //nolint:errcheck
+		return
+	}
+
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 {
+		limit = 20
+	}
+
+	users, total, appErr := h.svc.ListUsers(r.Context(), tenantID, offset, limit)
+	if appErr != nil {
+		httputil.WriteError(w, appErr) //nolint:errcheck
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
+		"users":  users,
+		"count":  total,
+		"offset": offset,
+		"limit":  limit,
+	}) //nolint:errcheck
 }
 
 // extractSessionToken gets the session token from Authorization header or X-Session-Token.

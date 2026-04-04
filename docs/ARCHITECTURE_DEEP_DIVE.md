@@ -1,4 +1,4 @@
-# AuthCore vs Keycloak vs IdentityServer vs Cognito — Architecture Deep Dive
+# AuthPlex vs Keycloak vs IdentityServer vs Cognito — Architecture Deep Dive
 
 > A detailed analysis of internals, feature trade-offs, and when each wins or loses.
 
@@ -24,13 +24,13 @@ Before comparing products, the language choice shapes everything — deployment 
 **1. Single static binary — deploy anywhere**
 
 ```
-Go:    scp authcore server:/opt/ && ./authcore     ← done
+Go:    scp authplex server:/opt/ && ./authplex     ← done
 Java:  Install JRE → configure classpath → java -jar  ← 3 steps
 .NET:  Install .NET runtime → dotnet run               ← 2 steps
 Node:  Install Node → npm install → node index.js      ← 3 steps
 ```
 
-A single `authcore` binary with zero runtime dependencies. Copy it to any Linux/macOS/Windows machine and run. No JVM, no .NET runtime, no node_modules. This is critical for:
+A single `authplex` binary with zero runtime dependencies. Copy it to any Linux/macOS/Windows machine and run. No JVM, no .NET runtime, no node_modules. This is critical for:
 - **Sidecar deployment** — 15MB image fits in any K8s pod
 - **Edge deployment** — runs on ARM, Raspberry Pi, IoT gateways
 - **Air-gapped environments** — no package manager needed
@@ -39,7 +39,7 @@ A single `authcore` binary with zero runtime dependencies. Copy it to any Linux/
 
 ```
 Idle memory comparison:
-  Go (AuthCore):     ~50MB
+  Go (AuthPlex):     ~50MB
   Java (Keycloak):   ~512MB (JVM heap + metaspace)
   .NET (Duende):     ~200MB (CLR + JIT)
   Node.js:           ~80MB (V8 heap)
@@ -76,7 +76,7 @@ Go's scheduler multiplexes thousands of goroutines onto a small number of OS thr
 **4. stdlib crypto — no third-party security dependencies**
 
 ```go
-// AuthCore's JWT signing uses ONLY Go stdlib:
+// AuthPlex's JWT signing uses ONLY Go stdlib:
 import (
     "crypto/rsa"
     "crypto/ecdsa"
@@ -95,13 +95,13 @@ In security-critical code, every dependency is a risk. Java IAM servers typicall
 - Apache HttpClient
 - Jackson JSON
 
-Each is a potential CVE vector. AuthCore depends on Go's stdlib crypto (maintained by Google's security team) plus exactly 3 external packages: `env` (config), `testify` (testing), `x/crypto` (bcrypt). That's it.
+Each is a potential CVE vector. AuthPlex depends on Go's stdlib crypto (maintained by Google's security team) plus exactly 3 external packages: `env` (config), `testify` (testing), `x/crypto` (bcrypt). That's it.
 
 **5. Compilation speed + type safety**
 
 ```
 Full build time:
-  Go:    ~5 seconds (AuthCore, 273 files)
+  Go:    ~5 seconds (AuthPlex, 273 files)
   Java:  ~30-60 seconds (Keycloak, thousands of files)
   .NET:  ~10-20 seconds (typical project)
   Rust:  ~2-5 minutes (fresh build)
@@ -138,7 +138,7 @@ var _ UserRepository = (*PostgresUserRepo)(nil)    // compile-time check
 var _ UserRepository = (*InMemoryUserRepo)(nil)     // compile-time check
 ```
 
-Go's implicit interface satisfaction (no `implements` keyword) makes hexagonal architecture natural. Any struct that has the right methods automatically satisfies the interface. This is why AuthCore has 20 in-memory repos and 7 Postgres repos — they're interchangeable without any framework.
+Go's implicit interface satisfaction (no `implements` keyword) makes hexagonal architecture natural. Any struct that has the right methods automatically satisfies the interface. This is why AuthPlex has 20 in-memory repos and 7 Postgres repos — they're interchangeable without any framework.
 
 ### Why Not the Others
 
@@ -192,7 +192,7 @@ Node.js was rejected because auth is **CPU-intensive** (bcrypt hashing, JWT sign
 | Ecosystem maturity | Young for web services | Mature (net/http, database/sql) | Go wins |
 | Hiring | Very hard to find Rust developers | Easy to find Go developers | Go wins |
 
-Rust was tempting for the performance edge but rejected for **development velocity**. AuthCore was built iteratively (12 modules, 273 files, 812 tests) in a short timeframe. Rust's borrow checker and steeper learning curve would have slowed development by 2-3x for marginal performance gains that don't matter in I/O-bound auth workloads.
+Rust was tempting for the performance edge but rejected for **development velocity**. AuthPlex was built iteratively (12 modules, 273 files, 812 tests) in a short timeframe. Rust's borrow checker and steeper learning curve would have slowed development by 2-3x for marginal performance gains that don't matter in I/O-bound auth workloads.
 
 **Why not Python?**
 
@@ -206,7 +206,7 @@ Python is excellent for SDKs/clients, not for the server itself.
 
 ### The Result
 
-| Metric | AuthCore (Go) |
+| Metric | AuthPlex (Go) |
 |--------|---------------|
 | Binary | 15MB static, zero dependencies |
 | Docker image | 15MB (distroless) |
@@ -219,13 +219,13 @@ Python is excellent for SDKs/clients, not for the server itself.
 | Files | 273 Go files, 812 tests |
 | Coverage | 80%+ coverage + 141 E2E |
 
-Go was chosen because AuthCore needed to be **small enough to be a sidecar, fast enough for auth workloads, simple enough to audit, and safe enough for security-critical code**. No other language satisfies all four constraints simultaneously.
+Go was chosen because AuthPlex needed to be **small enough to be a sidecar, fast enough for auth workloads, simple enough to audit, and safe enough for security-critical code**. No other language satisfies all four constraints simultaneously.
 
 ---
 
 ## 1. Architectural Philosophy
 
-### AuthCore — Hexagonal, Headless, Go
+### AuthPlex — Hexagonal, Headless, Go
 
 ```
 Design: Ports & Adapters (hexagonal)
@@ -241,7 +241,7 @@ UI: None — pure API. You build the frontend.
 - Tiny footprint — runs on a Raspberry Pi, perfect as K8s sidecar
 - Every line is auditable — ~249 Go files, no generated code, no magic
 - 80%+ test coverage + 141 E2E tests — confidence in correctness
-- Embeddable — the Go SDK runs AuthCore as a library, zero network hop
+- Embeddable — the Go SDK runs AuthPlex as a library, zero network hop
 - Multi-tenant by design — tenant_id on every table, not bolted on
 - Fast compilation — full build in ~5 seconds
 
@@ -354,27 +354,27 @@ UI: Hosted UI (customizable CSS) or your own
 
 ### 2.1 OAuth 2.0 / OIDC Protocol Layer
 
-| Capability | AuthCore | Keycloak | IdentityServer | Cognito | Notes |
+| Capability | AuthPlex | Keycloak | IdentityServer | Cognito | Notes |
 |-----------|----------|----------|----------------|---------|-------|
 | Auth Code + PKCE | Full | Full | Full | Full | Table stakes |
 | Client Credentials | Full | Full | Full | Full | M2M auth |
-| Refresh Token Rotation | Family tracking + replay detection | Yes | Yes | Yes | AuthCore's replay detection revokes entire family |
+| Refresh Token Rotation | Family tracking + replay detection | Yes | Yes | Yes | AuthPlex's replay detection revokes entire family |
 | Device Code (RFC 8628) | Full | Full | Add-on | **No** | IoT/TV apps need this |
 | Token Introspection | Full | Full | Full | **No** | Cognito forces local JWT validation only |
-| Token Revocation | JTI blacklist + refresh revoke | Full | Full | API only | AuthCore has both access + refresh revocation |
-| SAML 2.0 | Yes (SP mode, crewjam/saml) | Full IdP + SP | Add-on | SP only | AuthCore supports SP; IdP mode not yet |
+| Token Revocation | JTI blacklist + refresh revoke | Full | Full | API only | AuthPlex has both access + refresh revocation |
+| SAML 2.0 | Yes (SP mode, crewjam/saml) | Full IdP + SP | Add-on | SP only | AuthPlex supports SP; IdP mode not yet |
 | PAR | **No** | Yes | Yes | **No** | Pushed Authorization Requests (security improvement) |
 | CIBA | **No** | Yes | **No** | **No** | Backchannel auth (rare use case) |
 
-**Winner:** Keycloak (most complete). AuthCore is close but missing SAML.
+**Winner:** Keycloak (most complete). AuthPlex is close but missing SAML.
 
-**AuthCore's edge:** Refresh token replay detection with family-wide revocation — if a rotated token is reused, the entire chain is invalidated. This prevents token theft attacks.
+**AuthPlex's edge:** Refresh token replay detection with family-wide revocation — if a rotated token is reused, the entire chain is invalidated. This prevents token theft attacks.
 
 ---
 
 ### 2.2 Multi-Factor Authentication
 
-| Capability | AuthCore | Keycloak | IdentityServer | Cognito |
+| Capability | AuthPlex | Keycloak | IdentityServer | Cognito |
 |-----------|----------|----------|----------------|---------|
 | TOTP (authenticator apps) | RFC 6238, ±1 window drift | Full | Custom | Full |
 | WebAuthn/FIDO2 | go-webauthn library, 4 endpoints | Full | Custom | **No** |
@@ -385,17 +385,17 @@ UI: Hosted UI (customizable CSS) or your own
 | MFA challenge in /authorize | Intercepts auth flow, returns challenge | Seamless (built into login page) | Custom | Managed |
 | Adaptive MFA | **Roadmap** | Via extensions | **No** | Advanced Security ($0.05/MAU) |
 
-**Winner:** Keycloak (most options). AuthCore is strong with TOTP + WebAuthn + OTP.
+**Winner:** Keycloak (most options). AuthPlex is strong with TOTP + WebAuthn + OTP.
 
-**AuthCore's edge:** MFA is API-driven. The `/authorize` endpoint returns a challenge JSON when MFA is required — your frontend handles the UX. No redirect to a separate MFA page. No iframes.
+**AuthPlex's edge:** MFA is API-driven. The `/authorize` endpoint returns a challenge JSON when MFA is required — your frontend handles the UX. No redirect to a separate MFA page. No iframes.
 
-**AuthCore's gap:** No recovery codes (users locked out if they lose authenticator). No adaptive MFA (risk-based — on roadmap).
+**AuthPlex's gap:** No recovery codes (users locked out if they lose authenticator). No adaptive MFA (risk-based — on roadmap).
 
 ---
 
 ### 2.3 Multi-Tenancy
 
-| Capability | AuthCore | Keycloak | IdentityServer | Cognito |
+| Capability | AuthPlex | Keycloak | IdentityServer | Cognito |
 |-----------|----------|----------|----------------|---------|
 | Model | tenant_id column, same DB | Realm = separate config | Manual | User Pool = separate entity |
 | Max tenants | Thousands (single DB query) | Hundreds (JVM memory per realm) | Depends | 1,000 per account |
@@ -406,17 +406,17 @@ UI: Hosted UI (customizable CSS) or your own
 | Isolation | Application-level (WHERE tenant_id=) | Full realm isolation | N/A | Full pool isolation |
 | Cross-tenant SSO | **No** | Yes (realm-to-realm) | Manual | **No** |
 
-**Winner:** AuthCore for scale (thousands of tenants, lightweight). Keycloak for features (cross-tenant SSO).
+**Winner:** AuthPlex for scale (thousands of tenants, lightweight). Keycloak for features (cross-tenant SSO).
 
-**AuthCore's edge:** Creating a tenant is a simple INSERT — no memory allocation, no config duplication. A single AuthCore instance can serve thousands of tenants because they share the same database tables, filtered by tenant_id.
+**AuthPlex's edge:** Creating a tenant is a simple INSERT — no memory allocation, no config duplication. A single AuthPlex instance can serve thousands of tenants because they share the same database tables, filtered by tenant_id.
 
-**AuthCore's gap:** Application-level isolation only. DB-level RLS is on Tier 1 roadmap. No cross-tenant SSO.
+**AuthPlex's gap:** Application-level isolation only. DB-level RLS is on Tier 1 roadmap. No cross-tenant SSO.
 
 ---
 
 ### 2.4 User Management
 
-| Capability | AuthCore | Keycloak | IdentityServer | Cognito |
+| Capability | AuthPlex | Keycloak | IdentityServer | Cognito |
 |-----------|----------|----------|----------------|---------|
 | Registration | POST /register (API) | UI + API | **None** (BYO) | UI + API + Hosted |
 | Login | POST /login (API) | UI + API + themes | **None** (BYO) | UI + API + Hosted |
@@ -431,17 +431,17 @@ UI: Hosted UI (customizable CSS) or your own
 
 **Winner:** Keycloak (most complete). Cognito for managed simplicity.
 
-**AuthCore's edge:** API-only registration/login means your frontend controls the entire UX. Password hashing uses bcrypt at cost 12 (strong but fast enough).
+**AuthPlex's edge:** API-only registration/login means your frontend controls the entire UX. Password hashing uses bcrypt at cost 12 (strong but fast enough).
 
-**AuthCore's gap:** No user list/search endpoint (SCIM on roadmap). No self-service account management. No LDAP federation.
+**AuthPlex's gap:** No user list/search endpoint (SCIM on roadmap). No self-service account management. No LDAP federation.
 
 ---
 
 ### 2.5 Administration
 
-| Capability | AuthCore | Keycloak | IdentityServer | Cognito |
+| Capability | AuthPlex | Keycloak | IdentityServer | Cognito |
 |-----------|----------|----------|----------------|---------|
-| Admin UI | Separate React SPA (authcore-admin) | Beautiful built-in console | Sold separately by Duende | AWS Console |
+| Admin UI | Separate React SPA (authplex-admin) | Beautiful built-in console | Sold separately by Duende | AWS Console |
 | Admin API | REST (49 endpoints, JWT-based admin auth + API key) | REST + Java Client + CLI | **None** | AWS SDK/CLI |
 | Admin CLI | **Roadmap** | kcadm.sh (powerful) | dotnet CLI | AWS CLI |
 | Admin auth | API key (JWT-based on roadmap) | Username/password + optional 2FA | N/A | IAM policies |
@@ -450,15 +450,15 @@ UI: Hosted UI (customizable CSS) or your own
 
 **Winner:** Keycloak (built-in console + CLI + fine-grained admin roles).
 
-**AuthCore's edge:** 30+ REST management endpoints are fully functional. Separate admin UI means it can be deployed independently (CDN, Vercel). Audit logging with query API gives full visibility.
+**AuthPlex's edge:** 30+ REST management endpoints are fully functional. Separate admin UI means it can be deployed independently (CDN, Vercel). Audit logging with query API gives full visibility.
 
-**AuthCore's gap:** API key auth is single-level (no scoping). JWT-based admin roles with tenant_admin scoping is on Tier 1 roadmap.
+**AuthPlex's gap:** API key auth is single-level (no scoping). JWT-based admin roles with tenant_admin scoping is on Tier 1 roadmap.
 
 ---
 
 ### 2.6 Security Posture
 
-| Capability | AuthCore | Keycloak | IdentityServer | Cognito |
+| Capability | AuthPlex | Keycloak | IdentityServer | Cognito |
 |-----------|----------|----------|----------------|---------|
 | Security audit history | **None** | 10+ years of CVE responses | Duende advisories | AWS compliance |
 | Encryption at rest | AES-256-GCM | Vault integration | DPAPI/Azure KV | KMS |
@@ -473,13 +473,13 @@ UI: Hosted UI (customizable CSS) or your own
 
 **Winner:** Cognito (compliance certifications). Keycloak (battle-tested security).
 
-**AuthCore's risk:** No security audit means unknown vulnerabilities. Mitigated by: 80%+ test coverage, hexagonal architecture (small attack surface), stdlib crypto (no third-party JWT libraries), and open-source review.
+**AuthPlex's risk:** No security audit means unknown vulnerabilities. Mitigated by: 80%+ test coverage, hexagonal architecture (small attack surface), stdlib crypto (no third-party JWT libraries), and open-source review.
 
 ---
 
 ### 2.7 Operational Overhead
 
-| Metric | AuthCore | Keycloak | IdentityServer | Cognito |
+| Metric | AuthPlex | Keycloak | IdentityServer | Cognito |
 |--------|----------|----------|----------------|---------|
 | Docker image | 15MB | 500MB+ | N/A | N/A |
 | RAM (idle) | ~50MB | ~512MB | ~200MB | N/A |
@@ -490,15 +490,15 @@ UI: Hosted UI (customizable CSS) or your own
 | Config complexity | 23 env vars | Hundreds of realm settings | .NET DI config | Console clicks |
 | Upgrade process | Replace binary | Re-test themes + SPIs | NuGet update | Managed |
 
-**Winner:** AuthCore (smallest, fastest, simplest). Cognito (zero ops).
+**Winner:** AuthPlex (smallest, fastest, simplest). Cognito (zero ops).
 
-**AuthCore's edge:** A single AuthCore binary + Postgres + Redis uses ~500MB total RAM. Keycloak alone uses that much. Startup in <1 second vs 10-30 seconds for JVM warmup.
+**AuthPlex's edge:** A single AuthPlex binary + Postgres + Redis uses ~500MB total RAM. Keycloak alone uses that much. Startup in <1 second vs 10-30 seconds for JVM warmup.
 
 ---
 
 ### 2.8 Extensibility
 
-| Extension | AuthCore | Keycloak | IdentityServer | Cognito |
+| Extension | AuthPlex | Keycloak | IdentityServer | Cognito |
 |----------|----------|----------|----------------|---------|
 | Custom authenticator | Implement Go interface | Java SPI (hot-deploy) | .NET middleware | Lambda |
 | Custom user store | `user.Repository` port | User Federation SPI | `IUserStore` | Lambda |
@@ -510,13 +510,13 @@ UI: Hosted UI (customizable CSS) or your own
 
 **Winner:** Keycloak (hot-deploy Java SPIs, most extension points). Cognito (any language via Lambda).
 
-**AuthCore's trade-off:** Compile-time extensibility via Go interfaces. Safer (type-checked) but requires recompilation. No runtime plugin loading.
+**AuthPlex's trade-off:** Compile-time extensibility via Go interfaces. Safer (type-checked) but requires recompilation. No runtime plugin loading.
 
 ---
 
 ## 3. Cost at Scale
 
-| MAU | AuthCore | Keycloak | IdentityServer | Cognito |
+| MAU | AuthPlex | Keycloak | IdentityServer | Cognito |
 |-----|----------|----------|----------------|---------|
 | 1K | $15/mo | $30/mo | $150/mo | $5/mo |
 | 10K | $20/mo | $50/mo | $155/mo | $55/mo |
@@ -524,7 +524,7 @@ UI: Hosted UI (customizable CSS) or your own
 | 1M | $50/mo | $200/mo | $1,100/mo | $5,500/mo |
 | 10M | $100/mo | $400/mo | $1,200/mo | $25,500/mo |
 
-**Cheapest at scale:** AuthCore and Keycloak (infrastructure-only cost, no per-MAU fees).
+**Cheapest at scale:** AuthPlex and Keycloak (infrastructure-only cost, no per-MAU fees).
 
 **Most expensive:** Cognito at scale ($0.0055/MAU after 50K free tier). IdentityServer has fixed license cost regardless of scale.
 
@@ -532,7 +532,7 @@ UI: Hosted UI (customizable CSS) or your own
 
 ## 4. Summary: Strengths & Weaknesses
 
-### AuthCore
+### AuthPlex
 
 | Strength | Weakness |
 |----------|----------|
@@ -579,29 +579,29 @@ UI: Hosted UI (customizable CSS) or your own
 
 | If you need... | Choose |
 |---------------|--------|
-| Custom login UX, multi-tenant SaaS | **AuthCore** |
+| Custom login UX, multi-tenant SaaS | **AuthPlex** |
 | Production-ready with SAML + LDAP now | **Keycloak** |
 | Embedded auth in .NET app | **IdentityServer** |
 | Zero infrastructure, AWS-native | **Cognito** |
-| Smallest possible deployment | **AuthCore** (15MB) |
+| Smallest possible deployment | **AuthPlex** (15MB) |
 | Battle-tested security | **Keycloak** (10+ years) |
-| Cheapest at 1M+ users | **AuthCore** or **Keycloak** |
+| Cheapest at 1M+ users | **AuthPlex** or **Keycloak** |
 | Compliance certifications | **Cognito** (SOC2/HIPAA) |
-| WebAuthn + TOTP + OTP | **AuthCore** or **Keycloak** |
+| WebAuthn + TOTP + OTP | **AuthPlex** or **Keycloak** |
 | Any-language extensibility | **Cognito** (Lambda) |
-| Embeddable library mode | **AuthCore** (Go SDK) or **IdentityServer** (.NET) |
+| Embeddable library mode | **AuthPlex** (Go SDK) or **IdentityServer** (.NET) |
 
 ---
 
-## 6. Who Should NOT Use AuthCore
+## 6. Who Should NOT Use AuthPlex
 
-AuthCore is not the right choice for everyone. Here are the scenarios where you should use something else — and what to use instead.
+AuthPlex is not the right choice for everyone. Here are the scenarios where you should use something else — and what to use instead.
 
 ### You need SAML 2.0 today
 
 **Scenario:** Your enterprise customers use Okta, Azure AD, or ADFS and require SAML SSO for employee login. Their IT department won't approve OIDC-only providers.
 
-**Problem:** AuthCore has no SAML support (Tier 2 roadmap — weeks away, not available today).
+**Problem:** AuthPlex has no SAML support (Tier 2 roadmap — weeks away, not available today).
 
 **Use instead:** Keycloak (full SAML IdP + SP) or Cognito (SAML SP).
 
@@ -611,7 +611,7 @@ AuthCore is not the right choice for everyone. Here are the scenarios where you 
 
 **Scenario:** You're building an MVP, demo, or hackathon project. You need login working today — not tomorrow. You don't have time to build login/register UI screens.
 
-**Problem:** AuthCore is headless — you must build every UI screen yourself. No hosted login page, no pre-built forms, no redirect-based login flow.
+**Problem:** AuthPlex is headless — you must build every UI screen yourself. No hosted login page, no pre-built forms, no redirect-based login flow.
 
 **Use instead:** Auth0 (hosted login page in 10 minutes), Cognito (Hosted UI), or Keycloak (themed login pages out of the box).
 
@@ -621,7 +621,7 @@ AuthCore is not the right choice for everyone. Here are the scenarios where you 
 
 **Scenario:** Your customer's procurement team requires SOC2 Type II, HIPAA BAA, or FedRAMP certification. They need a signed compliance report before signing the contract.
 
-**Problem:** AuthCore has zero compliance certifications and no security audit history. No CVE track record. Built by a single developer.
+**Problem:** AuthPlex has zero compliance certifications and no security audit history. No CVE track record. Built by a single developer.
 
 **Use instead:** Cognito (SOC2, HIPAA, FedRAMP), Auth0 (SOC2, HIPAA), or Keycloak with Red Hat SSO (FIPS 140-2).
 
@@ -631,7 +631,7 @@ AuthCore is not the right choice for everyone. Here are the scenarios where you 
 
 **Scenario:** Your team is backend-only (Java, .NET, Python). Nobody knows React/Vue/HTML. You need auth but can't build the UI.
 
-**Problem:** Headless = you build the UI. If you can't build forms, buttons, and error handling, AuthCore gives you nothing visible to users.
+**Problem:** Headless = you build the UI. If you can't build forms, buttons, and error handling, AuthPlex gives you nothing visible to users.
 
 **Use instead:** Keycloak (full admin console + themed login pages — zero frontend code needed), Cognito (Hosted UI), or Auth0 (Universal Login).
 
@@ -641,7 +641,7 @@ AuthCore is not the right choice for everyone. Here are the scenarios where you 
 
 **Scenario:** Your company has 10,000 employees in Active Directory. Users must log in with their corporate AD credentials. No migration — AD is the source of truth.
 
-**Problem:** AuthCore has no LDAP or AD federation. Users must be in AuthCore's database.
+**Problem:** AuthPlex has no LDAP or AD federation. Users must be in AuthPlex's database.
 
 **Use instead:** Keycloak (LDAP + AD + Kerberos federation built-in), or Azure AD / Entra ID directly.
 
@@ -651,7 +651,7 @@ AuthCore is not the right choice for everyone. Here are the scenarios where you 
 
 **Scenario:** Your entire platform is Java Spring Boot or .NET. You want auth embedded in your app process, not as a separate service. Your team doesn't know Go.
 
-**Problem:** The embedded Go SDK only works in Go applications. For Java/.NET, AuthCore runs as a separate HTTP service — adding a network hop and operational complexity.
+**Problem:** The embedded Go SDK only works in Go applications. For Java/.NET, AuthPlex runs as a separate HTTP service — adding a network hop and operational complexity.
 
 **Use instead:** Spring Security (Java, embedded), IdentityServer/Duende (.NET, embedded), or Keycloak (Java, can run as sidecar).
 
@@ -661,7 +661,7 @@ AuthCore is not the right choice for everyone. Here are the scenarios where you 
 
 **Scenario:** You're building for banking, healthcare, or government. Your security team requires an auth solution with published CVE history, penetration test reports, and a dedicated security response team.
 
-**Problem:** AuthCore has zero production deployments, zero published CVEs (because none have been looked for), no penetration test, and a single maintainer.
+**Problem:** AuthPlex has zero production deployments, zero published CVEs (because none have been looked for), no penetration test, and a single maintainer.
 
 **Use instead:** Keycloak (10+ years, CNCF, active security team), Auth0 (dedicated security team, bug bounty program), or Cognito (AWS security team).
 
@@ -671,7 +671,7 @@ AuthCore is not the right choice for everyone. Here are the scenarios where you 
 
 **Scenario:** Your customer success team needs to manage users — reset passwords, lock accounts, view login history — through a polished admin dashboard. They're not developers.
 
-**Problem:** AuthCore's admin UI (`authcore-admin`) is functional but basic. It covers tenant/client/role CRUD and audit logs. There's no user management page, no account lock/unlock, no session viewer, no "reset user password" button.
+**Problem:** AuthPlex's admin UI (`authplex-admin`) is functional but basic. It covers tenant/client/role CRUD and audit logs. There's no user management page, no account lock/unlock, no session viewer, no "reset user password" button.
 
 **Use instead:** Keycloak (polished admin console with full user management), Auth0 (beautiful dashboard), or Cognito (AWS Console).
 
@@ -681,7 +681,7 @@ AuthCore is not the right choice for everyone. Here are the scenarios where you 
 
 **Scenario:** Your app needs Facebook, Twitter/X, LinkedIn, WeChat, Line, and Spotify login. Breadth of social providers matters.
 
-**Problem:** AuthCore supports 6 provider types (Google, GitHub, Microsoft, Apple, generic OIDC, generic OAuth2). No Facebook, Twitter, LinkedIn, or regional providers.
+**Problem:** AuthPlex supports 6 provider types (Google, GitHub, Microsoft, Apple, generic OIDC, generic OAuth2). No Facebook, Twitter, LinkedIn, or regional providers.
 
 **Use instead:** Auth0 (50+ social connections), Keycloak (20+ built-in + custom SPI), or Firebase Auth (broad social support).
 
@@ -689,14 +689,14 @@ AuthCore is not the right choice for everyone. Here are the scenarios where you 
 
 ### Compliance in Sidecar Mode
 
-When AuthCore runs as a **sidecar** (same pod/host as your app), compliance certifications are **your app's responsibility**, not AuthCore's:
+When AuthPlex runs as a **sidecar** (same pod/host as your app), compliance certifications are **your app's responsibility**, not AuthPlex's:
 
 ```
 ┌──────────────────────────────────────┐
 │      Your App (SOC2/HIPAA certified) │
 │                                       │
 │  ┌──────────┐     ┌───────────────┐  │
-│  │ AuthCore │◄───►│ Your Service  │  │
+│  │ AuthPlex │◄───►│ Your Service  │  │
 │  │ (sidecar)│     │               │  │
 │  └──────────┘     └───────────────┘  │
 │                                       │
@@ -706,14 +706,14 @@ When AuthCore runs as a **sidecar** (same pod/host as your app), compliance cert
 
 | Concern | Who owns it? | Why |
 |---------|-------------|-----|
-| SOC2/HIPAA certification | **Your app** | AuthCore is a component inside your certified infra |
+| SOC2/HIPAA certification | **Your app** | AuthPlex is a component inside your certified infra |
 | TLS termination | **Your infra** | Load balancer/nginx handles TLS |
 | Encryption at rest | **Your DB** | RDS/EBS encryption — your config |
-| Penetration test | **Your app scope** | AuthCore tested as part of your pentest |
+| Penetration test | **Your app scope** | AuthPlex tested as part of your pentest |
 | Network isolation | **Your infra** | VPC, security groups — your setup |
 | Backup/DR | **Your infra** | DB snapshots — your ops |
 
-AuthCore provides the **building blocks** your compliance auditor needs:
+AuthPlex provides the **building blocks** your compliance auditor needs:
 - Audit logging (tamper-proof, 25+ events, auto-wired)
 - Encryption at rest (AES-256-GCM)
 - JWT signature verification (RS256/ES256)
@@ -724,13 +724,13 @@ AuthCore provides the **building blocks** your compliance auditor needs:
 - GDPR right-to-erasure (HardDelete)
 - Admin auth with role-based access (super_admin, tenant_admin, readonly, auditor)
 
-**The "no compliance certifications" gap only applies if you sell AuthCore as a standalone SaaS (like Auth0). As a sidecar or embedded library, it inherits your app's compliance posture** — just like bcrypt, PostgreSQL, or any other library doesn't need separate certification.
+**The "no compliance certifications" gap only applies if you sell AuthPlex as a standalone SaaS (like Auth0). As a sidecar or embedded library, it inherits your app's compliance posture** — just like bcrypt, PostgreSQL, or any other library doesn't need separate certification.
 
 ---
 
-### Summary: Use AuthCore When...
+### Summary: Use AuthPlex When...
 
-| Your situation | AuthCore? | Better alternative |
+| Your situation | AuthPlex? | Better alternative |
 |---------------|-----------|-------------------|
 | Building custom auth UX for SaaS | **Yes** | — |
 | Sidecar in your certified infrastructure | **Yes** | — (compliance is on your app) |

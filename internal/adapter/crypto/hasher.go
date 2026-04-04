@@ -1,8 +1,8 @@
 package crypto
 
 import (
-	"github.com/authcore/internal/domain/client"
-	"github.com/authcore/internal/domain/user"
+	"github.com/authplex/internal/domain/client"
+	"github.com/authplex/internal/domain/user"
 	"golang.org/x/crypto/bcrypt"
 )
 

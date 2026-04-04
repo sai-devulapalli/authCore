@@ -7,10 +7,10 @@ import (
 	"encoding/base64"
 	"log/slog"
 
-	auditsvc "github.com/authcore/internal/application/audit"
-	domainaudit "github.com/authcore/internal/domain/audit"
-	"github.com/authcore/internal/domain/client"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	auditsvc "github.com/authplex/internal/application/audit"
+	domainaudit "github.com/authplex/internal/domain/audit"
+	"github.com/authplex/internal/domain/client"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // Service provides OAuth client management operations.

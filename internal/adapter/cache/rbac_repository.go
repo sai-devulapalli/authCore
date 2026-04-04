@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/authcore/internal/domain/rbac"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/rbac"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // InMemoryRoleRepository implements rbac.RoleRepository.

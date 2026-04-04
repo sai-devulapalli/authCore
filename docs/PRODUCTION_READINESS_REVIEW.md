@@ -1,4 +1,4 @@
-# AuthCore — Production Readiness Review
+# AuthPlex — Production Readiness Review
 
 > **Reviewer:** Senior Staff Engineer / Principal Architect perspective
 > **Context:** Healthcare SaaS platform (HIPAA/NABH regulated)
@@ -15,7 +15,7 @@ Hexagonal architecture is **cleanly implemented**. No domain→adapter import vi
 - Domain layer (`internal/domain/`) — pure Go structs + interfaces, zero infrastructure imports
 - Application layer (`internal/application/`) — orchestration only, depends on domain ports
 - Adapter layer (`internal/adapter/`) — implements domain ports
-- Wiring (`cmd/authcore/main.go`) — dependency injection via constructors + functional options
+- Wiring (`cmd/authplex/main.go`) — dependency injection via constructors + functional options
 
 ### Gaps
 
@@ -103,11 +103,11 @@ HTTP server with 10s read/write timeout, 60s idle. Redis fallback to in-memory o
 | Severity | Finding | File |
 |----------|---------|------|
 | HIGH | **Zero query-level timeouts** — 43 DB queries use `r.Context()` directly, no `context.WithTimeout`. Slow query = blocked goroutine indefinitely | All Postgres repos |
-| HIGH | **Connection pool not configured** — `sql.Open()` called directly, not using `database.NewConnection()` with pool settings. Go default = unlimited connections | `cmd/authcore/main.go:401` vs `pkg/sdk/database/database.go` |
-| HIGH | **Cleanup service cancel bug** — `defer cleanupCancel()` fires immediately, not after shutdown signal. Cleanup goroutine starts but may be cancelled prematurely | `cmd/authcore/main.go:467-469` |
+| HIGH | **Connection pool not configured** — `sql.Open()` called directly, not using `database.NewConnection()` with pool settings. Go default = unlimited connections | `cmd/authplex/main.go:401` vs `pkg/sdk/database/database.go` |
+| HIGH | **Cleanup service cancel bug** — `defer cleanupCancel()` fires immediately, not after shutdown signal. Cleanup goroutine starts but may be cancelled prematurely | `cmd/authplex/main.go:467-469` |
 | HIGH | No circuit breakers, retries, or bulkheads on any external call | Entire codebase |
 | MEDIUM | Bcrypt DoS — no timeout on password hashing. Cost 12 = ~100ms, long password = longer | `adapter/crypto/hasher.go` |
-| MEDIUM | Database unavailable = server won't start (crashes). No degraded mode | `cmd/authcore/main.go:434-437` |
+| MEDIUM | Database unavailable = server won't start (crashes). No degraded mode | `cmd/authplex/main.go:434-437` |
 | LOW | In-memory rate limiter doesn't work across multiple instances | `middleware/ratelimit.go` |
 
 ### Risk
@@ -241,7 +241,7 @@ Stateless HTTP server (any instance can handle any request). Postgres for persis
 
 ### Sidecar Compliance Model
 
-When deployed as a sidecar or embedded library, AuthCore **inherits your app's compliance posture**. SOC2/HIPAA certifications are your infrastructure's responsibility. AuthCore provides the building blocks auditors need.
+When deployed as a sidecar or embedded library, AuthPlex **inherits your app's compliance posture**. SOC2/HIPAA certifications are your infrastructure's responsibility. AuthPlex provides the building blocks auditors need.
 
 ### What's Fixed
 

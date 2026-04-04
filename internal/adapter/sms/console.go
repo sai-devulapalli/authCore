@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/authcore/internal/domain/otp"
+	"github.com/authplex/internal/domain/otp"
 )
 
 // ConsoleSender logs OTP to stdout (development mode).

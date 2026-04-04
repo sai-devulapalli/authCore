@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/authcore/internal/domain/token"
+	"github.com/authplex/internal/domain/token"
 )
 
 // InMemoryBlacklist implements token.TokenBlacklist.

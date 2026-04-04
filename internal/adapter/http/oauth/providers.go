@@ -1,6 +1,6 @@
 package oauth
 
-import "github.com/authcore/internal/domain/identity"
+import "github.com/authplex/internal/domain/identity"
 
 // ProviderDefaults contains default configuration for well-known providers.
 type ProviderDefaults struct {

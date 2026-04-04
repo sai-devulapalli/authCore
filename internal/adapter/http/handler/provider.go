@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	providersvc "github.com/authcore/internal/application/provider"
-	"github.com/authcore/pkg/sdk/httputil"
+	providersvc "github.com/authplex/internal/application/provider"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // ProviderHandler serves the identity provider management API.

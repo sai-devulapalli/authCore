@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/authcore/internal/application/auth"
-	"github.com/authcore/internal/application/jwks"
-	"github.com/authcore/internal/domain/identity"
-	"github.com/authcore/internal/domain/jwk"
-	"github.com/authcore/internal/domain/token"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/application/auth"
+	"github.com/authplex/internal/application/jwks"
+	"github.com/authplex/internal/domain/identity"
+	"github.com/authplex/internal/domain/jwk"
+	"github.com/authplex/internal/domain/token"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -177,7 +177,7 @@ func TestAuthorizeRedirect_Success(t *testing.T) {
 	}
 
 	svc := NewService(providerRepo, &mockIdentityRepo{}, &mockStateRepo{}, &mockOAuthClient{},
-		newTestAuthSvc(), "https://authcore.com/callback", slog.Default())
+		newTestAuthSvc(), "https://authplex.com/callback", slog.Default())
 
 	url, appErr := svc.AuthorizeRedirect(context.Background(), SocialAuthorizeRequest{
 		Provider: "github",
@@ -194,7 +194,7 @@ func TestAuthorizeRedirect_Success(t *testing.T) {
 
 func TestAuthorizeRedirect_ProviderNotFound(t *testing.T) {
 	svc := NewService(&mockProviderRepo{}, &mockIdentityRepo{}, &mockStateRepo{}, &mockOAuthClient{},
-		newTestAuthSvc(), "https://authcore.com/callback", slog.Default())
+		newTestAuthSvc(), "https://authplex.com/callback", slog.Default())
 
 	_, appErr := svc.AuthorizeRedirect(context.Background(), SocialAuthorizeRequest{
 		Provider: "google",
@@ -212,7 +212,7 @@ func TestAuthorizeRedirect_ProviderDisabled(t *testing.T) {
 		},
 	}
 	svc := NewService(providerRepo, &mockIdentityRepo{}, &mockStateRepo{}, &mockOAuthClient{},
-		newTestAuthSvc(), "https://authcore.com/callback", slog.Default())
+		newTestAuthSvc(), "https://authplex.com/callback", slog.Default())
 
 	_, appErr := svc.AuthorizeRedirect(context.Background(), SocialAuthorizeRequest{
 		Provider: "google", TenantID: "t1",
@@ -251,7 +251,7 @@ func TestHandleCallback_Success_NewIdentity(t *testing.T) {
 	}
 
 	svc := NewService(providerRepo, &mockIdentityRepo{}, stateRepo, &mockOAuthClient{},
-		newTestAuthSvc(), "https://authcore.com/callback", slog.Default())
+		newTestAuthSvc(), "https://authplex.com/callback", slog.Default())
 
 	resp, appErr := svc.HandleCallback(context.Background(), CallbackRequest{
 		Code:  "provider-code",
@@ -293,7 +293,7 @@ func TestHandleCallback_ExistingIdentity(t *testing.T) {
 	}
 
 	svc := NewService(providerRepo, identityRepo, stateRepo, &mockOAuthClient{},
-		newTestAuthSvc(), "https://authcore.com/callback", slog.Default())
+		newTestAuthSvc(), "https://authplex.com/callback", slog.Default())
 
 	resp, appErr := svc.HandleCallback(context.Background(), CallbackRequest{
 		Code: "code", State: "state",
@@ -305,7 +305,7 @@ func TestHandleCallback_ExistingIdentity(t *testing.T) {
 
 func TestHandleCallback_ProviderError(t *testing.T) {
 	svc := NewService(&mockProviderRepo{}, &mockIdentityRepo{}, &mockStateRepo{}, &mockOAuthClient{},
-		newTestAuthSvc(), "https://authcore.com/callback", slog.Default())
+		newTestAuthSvc(), "https://authplex.com/callback", slog.Default())
 
 	_, appErr := svc.HandleCallback(context.Background(), CallbackRequest{
 		Error: "access_denied",
@@ -317,7 +317,7 @@ func TestHandleCallback_ProviderError(t *testing.T) {
 
 func TestHandleCallback_InvalidState(t *testing.T) {
 	svc := NewService(&mockProviderRepo{}, &mockIdentityRepo{}, &mockStateRepo{}, &mockOAuthClient{},
-		newTestAuthSvc(), "https://authcore.com/callback", slog.Default())
+		newTestAuthSvc(), "https://authplex.com/callback", slog.Default())
 
 	_, appErr := svc.HandleCallback(context.Background(), CallbackRequest{
 		Code: "code", State: "invalid-state",

@@ -1,6 +1,6 @@
-# AuthCore — Headless Identity & Access Management Engine
+# AuthPlex — Headless Identity & Access Management Engine
 
-AuthCore is a technology-agnostic, headless IAM engine built in Go. It provides centralized authentication and authorization via standard OIDC/OAuth 2.0 protocols, allowing any frontend (React, Vue, Mobile, CLI) and any backend (Node.js, Python, Java, .NET) to integrate using standard libraries.
+AuthPlex is a technology-agnostic, headless IAM engine built in Go. It provides centralized authentication and authorization via standard OIDC/OAuth 2.0 protocols, allowing any frontend (React, Vue, Mobile, CLI) and any backend (Node.js, Python, Java, .NET) to integrate using standard libraries.
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@ AuthCore is a technology-agnostic, headless IAM engine built in Go. It provides 
 
 ## Architecture
 
-AuthCore follows **Hexagonal Architecture** (Ports & Adapters):
+AuthPlex follows **Hexagonal Architecture** (Ports & Adapters):
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -85,13 +85,13 @@ AuthCore follows **Hexagonal Architecture** (Ports & Adapters):
 make build
 
 # Run in local mode (in-memory storage)
-./bin/authcore
+./bin/authplex
 
 # Run in production mode (Postgres required)
-AUTHCORE_ENV=production \
-AUTHCORE_DATABASE_DSN="postgres://user:pass@localhost:5432/authcore?sslmode=disable" \
-AUTHCORE_ADMIN_API_KEY="your-secret-key" \
-./bin/authcore
+AUTHPLEX_ENV=production \
+AUTHPLEX_DATABASE_DSN="postgres://user:pass@localhost:5432/authplex?sslmode=disable" \
+AUTHPLEX_ADMIN_API_KEY="your-secret-key" \
+./bin/authplex
 ```
 
 ### Docker
@@ -198,7 +198,7 @@ Management endpoints require API key authentication (`X-API-Key` or `Authorizati
 ### Authorization Code + PKCE (Primary Flow)
 
 ```
-React SPA                    AuthCore                     Backend API
+React SPA                    AuthPlex                     Backend API
    │                            │                            │
    │ 1. Generate PKCE pair      │                            │
    │    verifier = random(43)   │                            │
@@ -280,7 +280,7 @@ curl -X POST http://localhost:8080/device/authorize \
 
 ## User Authentication
 
-AuthCore includes built-in user management with registration, login, sessions, and OIDC UserInfo.
+AuthPlex includes built-in user management with registration, login, sessions, and OIDC UserInfo.
 
 ### Registration
 
@@ -336,8 +336,8 @@ curl -H "Authorization: Bearer SESSION_TOKEN" \
 
 | Mode | Config | How |
 |------|--------|-----|
-| Header (default) | `AUTHCORE_TENANT_MODE=header` | `X-Tenant-ID: tenant-1` header |
-| Domain | `AUTHCORE_TENANT_MODE=domain` | Request hostname → tenant lookup |
+| Header (default) | `AUTHPLEX_TENANT_MODE=header` | `X-Tenant-ID: tenant-1` header |
+| Domain | `AUTHPLEX_TENANT_MODE=domain` | Request hostname → tenant lookup |
 
 ### Tenant Isolation
 
@@ -362,7 +362,7 @@ curl -X POST http://localhost:8080/tenants \
 
 ## Social Login
 
-AuthCore acts as an OAuth client to external providers. No HTML generated — only 302 redirects.
+AuthPlex acts as an OAuth client to external providers. No HTML generated — only 302 redirects.
 
 ### Supported Providers
 
@@ -391,9 +391,9 @@ curl -X POST http://localhost:8080/tenants/tenant-1/providers \
 GET /authorize?provider=google&client_id=my-app&redirect_uri=https://myapp.com/cb&...
   → 302 to Google consent
   → Google redirects to /callback?code=...&state=...
-  → AuthCore exchanges code, links identity, issues AuthCore auth code
-  → 302 to https://myapp.com/cb?code=AUTHCORE_CODE&state=...
-  → POST /token to exchange for AuthCore tokens
+  → AuthPlex exchanges code, links identity, issues AuthPlex auth code
+  → 302 to https://myapp.com/cb?code=AUTHPLEX_CODE&state=...
+  → POST /token to exchange for AuthPlex tokens
 ```
 
 ### Identity Linking
@@ -498,7 +498,7 @@ curl -X POST http://localhost:8080/introspect \
 
 ### CORS
 
-Configurable via `AUTHCORE_CORS_ORIGINS`. Supports:
+Configurable via `AUTHPLEX_CORS_ORIGINS`. Supports:
 - `*` (allow all — development)
 - Comma-separated origins: `https://myapp.com, https://admin.myapp.com`
 - Preflight (`OPTIONS`) handled automatically
@@ -516,7 +516,7 @@ curl -H "X-API-Key: your-secret-key" http://localhost:8080/tenants
 curl -H "Authorization: Bearer your-secret-key" http://localhost:8080/tenants
 ```
 
-Set via `AUTHCORE_ADMIN_API_KEY`. Empty = no auth (development mode only).
+Set via `AUTHPLEX_ADMIN_API_KEY`. Empty = no auth (development mode only).
 
 ### Client Enforcement
 
@@ -543,15 +543,15 @@ All configuration via environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AUTHCORE_ENV` | `local` | Environment: `local`, `staging`, `production` |
-| `AUTHCORE_HTTP_PORT` | `8080` | HTTP server port |
-| `AUTHCORE_DATABASE_DSN` | `postgres://authcore:authcore_dev@localhost:5432/authcore?sslmode=disable` | Database connection |
-| `AUTHCORE_DATABASE_DRIVER` | `postgres` | `postgres` or `sqlserver` |
-| `AUTHCORE_REDIS_URL` | `redis://localhost:6379` | Redis connection |
-| `AUTHCORE_TENANT_MODE` | `header` | `header` or `domain` |
-| `AUTHCORE_ISSUER` | `http://localhost:8080` | JWT issuer URL |
-| `AUTHCORE_CORS_ORIGINS` | `*` | Comma-separated allowed origins |
-| `AUTHCORE_ADMIN_API_KEY` | (empty) | API key for management endpoints |
+| `AUTHPLEX_ENV` | `local` | Environment: `local`, `staging`, `production` |
+| `AUTHPLEX_HTTP_PORT` | `8080` | HTTP server port |
+| `AUTHPLEX_DATABASE_DSN` | `postgres://authplex:authplex_dev@localhost:5432/authplex?sslmode=disable` | Database connection |
+| `AUTHPLEX_DATABASE_DRIVER` | `postgres` | `postgres` or `sqlserver` |
+| `AUTHPLEX_REDIS_URL` | `redis://localhost:6379` | Redis connection |
+| `AUTHPLEX_TENANT_MODE` | `header` | `header` or `domain` |
+| `AUTHPLEX_ISSUER` | `http://localhost:8080` | JWT issuer URL |
+| `AUTHPLEX_CORS_ORIGINS` | `*` | Comma-separated allowed origins |
+| `AUTHPLEX_ADMIN_API_KEY` | (empty) | API key for management endpoints |
 
 ### Logging
 
@@ -566,8 +566,8 @@ All configuration via environment variables:
 ## Project Structure
 
 ```
-authcore/
-├── cmd/authcore/              # Entry point, in-memory repos, server wiring
+authplex/
+├── cmd/authplex/              # Entry point, in-memory repos, server wiring
 ├── internal/
 │   ├── adapter/               # Infrastructure adapters
 │   │   ├── cache/             # In-memory repos (14 repos)
@@ -627,7 +627,7 @@ authcore/
 
 ### Feature Matrix
 
-| Feature | AuthCore | Keycloak | IdentityServer (Duende) | AWS Cognito |
+| Feature | AuthPlex | Keycloak | IdentityServer (Duende) | AWS Cognito |
 |---------|---------|---------|------------------------|------------|
 | **Language** | Go | Java | .NET | Managed |
 | **Docker image** | ~15MB | ~500MB | N/A | N/A |
@@ -662,7 +662,7 @@ authcore/
 
 ### Cost Comparison (monthly infrastructure)
 
-| Scale | AuthCore | Keycloak | IdentityServer | Cognito |
+| Scale | AuthPlex | Keycloak | IdentityServer | Cognito |
 |-------|---------|---------|----------------|---------|
 | 10K users | ~$20 | ~$50 | ~$30 + license | ~$55 |
 | 100K users | ~$30 | ~$100 | ~$50 + license | ~$550 |
@@ -672,12 +672,12 @@ authcore/
 
 | Use Case | Best Choice |
 |----------|-------------|
-| Startup with custom UI, < 100K users | **AuthCore** |
+| Startup with custom UI, < 100K users | **AuthPlex** |
 | Enterprise with SAML, LDAP, admin UI | **Keycloak** |
 | .NET shop, moderate scale | **IdentityServer** |
 | AWS-native, zero ops | **Cognito** |
-| Multi-tenant SaaS | **AuthCore** (lighter) or **Keycloak** (more features) |
-| Sidecar/edge auth in K8s | **AuthCore** |
+| Multi-tenant SaaS | **AuthPlex** (lighter) or **Keycloak** (more features) |
+| Sidecar/edge auth in K8s | **AuthPlex** |
 | Need production auth today | **Keycloak** or **Cognito** |
 
 ---
@@ -687,7 +687,7 @@ authcore/
 ### Commands
 
 ```bash
-make build           # Build binary to ./bin/authcore
+make build           # Build binary to ./bin/authplex
 make test-unit       # Run unit tests with coverage
 make coverage-check  # Enforce 85% coverage threshold
 make lint            # Run golangci-lint
@@ -724,7 +724,7 @@ make clean           # Remove build artifacts
 10. Production Hardening: CORS, Client Enforcement, Admin Auth, Postgres Wiring
 11. Module 9: OTP + Phone + Password Reset
 12. Module 10: RBAC + Audit Logging + OpenTelemetry + mTLS
-13. Go SDK: Embeddable library (pkg/authcore)
+13. Go SDK: Embeddable library (pkg/authplex)
 
 ---
 
@@ -778,7 +778,7 @@ See [ROADMAP.md](ROADMAP.md) for the full tiered implementation plan.
 | **Tier 1** | Multi-level rate limiting | Per-IP, per-tenant, per-endpoint + Redis backend |
 | **Tier 2** | SCIM | User provisioning (RFC 7644) |
 | Medium | CORS per-client | Currently global; should be per-client whitelist |
-| Medium | Admin CLI tool | `authcore tenant create --domain example.com` |
+| Medium | Admin CLI tool | `authplex tenant create --domain example.com` |
 | Medium | Security headers | HSTS, CSP, X-Content-Type-Options |
 | **Tier 3** | Policy engine (ABAC) | Attribute-based access control beyond RBAC |
 | ~~Tier 3~~ | ~~Webhooks~~ | **DONE** — HMAC-signed, per-tenant subscriptions |

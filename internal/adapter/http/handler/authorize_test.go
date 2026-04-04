@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/authcore/internal/application/auth"
-	clientsvc "github.com/authcore/internal/application/client"
-	"github.com/authcore/internal/application/jwks"
-	"github.com/authcore/internal/domain/client"
-	"github.com/authcore/internal/domain/jwk"
-	"github.com/authcore/internal/domain/token"
+	"github.com/authplex/internal/application/auth"
+	clientsvc "github.com/authplex/internal/application/client"
+	"github.com/authplex/internal/application/jwks"
+	"github.com/authplex/internal/domain/client"
+	"github.com/authplex/internal/domain/jwk"
+	"github.com/authplex/internal/domain/token"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -256,4 +256,25 @@ func TestAuthorizeHandler_MethodNotAllowed(t *testing.T) {
 	h.HandleAuthorize(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestAuthorizeHandler_WithSocialService(t *testing.T) {
+	svc := newAuthService(&mockAuthCodeRepo{})
+	h := NewAuthorizeHandler(svc)
+	result := h.WithSocialService(nil)
+	assert.NotNil(t, result, "WithSocialService should return non-nil handler")
+}
+
+func TestAuthorizeHandler_WithUserService(t *testing.T) {
+	svc := newAuthService(&mockAuthCodeRepo{})
+	h := NewAuthorizeHandler(svc)
+	result := h.WithUserService(nil)
+	assert.NotNil(t, result, "WithUserService should return non-nil handler")
+}
+
+func TestAuthorizeHandler_WithMFA(t *testing.T) {
+	svc := newAuthService(&mockAuthCodeRepo{})
+	h := NewAuthorizeHandler(svc)
+	result := h.WithMFA(nil, nil)
+	assert.NotNil(t, result, "WithMFA should return non-nil handler")
 }

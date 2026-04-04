@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	webhooksvc "github.com/authcore/internal/application/webhook"
-	domainaudit "github.com/authcore/internal/domain/audit"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	webhooksvc "github.com/authplex/internal/application/webhook"
+	domainaudit "github.com/authplex/internal/domain/audit"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // Service provides audit logging operations.

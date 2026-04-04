@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/authcore/internal/domain/token"
+	"github.com/authplex/internal/domain/token"
 	goredis "github.com/redis/go-redis/v9"
 )
 

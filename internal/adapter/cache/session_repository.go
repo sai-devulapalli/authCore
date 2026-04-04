@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/authcore/internal/domain/user"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/user"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // InMemorySessionRepository implements user.SessionRepository.

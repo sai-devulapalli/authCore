@@ -1,10 +1,10 @@
-# AuthCore — Token Architecture
+# AuthPlex — Token Architecture
 
 ## Token Types & Storage
 
 | Token/Data | Where Stored | TTL | Format | Purpose |
 |-----------|-------------|-----|--------|---------|
-| **Session token** | Server-side (Redis in prod, in-memory in dev) | 24 hours | Opaque string | Prove user is logged into AuthCore |
+| **Session token** | Server-side (Redis in prod, in-memory in dev) | 24 hours | Opaque string | Prove user is logged into AuthPlex |
 | **JWT access_token** | **Client-side only** — never stored on server | 1 hour | Signed JWT (RS256/ES256) | Authorize API calls to your services |
 | **JWT id_token** | **Client-side only** — never stored on server | 1 hour | Signed JWT (RS256/ES256) | User identity claims for your frontend |
 | **Refresh token** | Server-side (Postgres in prod, in-memory in dev) | 30 days | Opaque string | Get new JWT when access_token expires |
@@ -31,11 +31,11 @@
 │  Used for:                         Used for:                      │
 │  • /authorize                      • Calling YOUR APIs            │
 │  • /userinfo                       • Calling ANY service          │
-│  • Any AuthCore endpoint           • Machine-to-machine           │
+│  • Any AuthPlex endpoint           • Machine-to-machine           │
 │    that needs to know              • Passed in Authorization      │
 │    "who is logged in"                header to resource servers   │
 │                                                                   │
-│  Lives: AuthCore only              Lives: Your app + your APIs   │
+│  Lives: AuthPlex only              Lives: Your app + your APIs   │
 │  Stored: Redis (server)            Stored: NOWHERE on server     │
 │  Revokable: YES (instant)          Revokable: NO (expires in 1h)│
 └─────────────────────────────────────────────────────────────────┘
@@ -43,12 +43,12 @@
 
 ---
 
-## Phase 1: Session Token (Talking to AuthCore)
+## Phase 1: Session Token (Talking to AuthPlex)
 
-The session token is created when a user authenticates with AuthCore (login, OTP verify). It proves "this user is logged in" and is used exclusively for AuthCore endpoints.
+The session token is created when a user authenticates with AuthPlex (login, OTP verify). It proves "this user is logged in" and is used exclusively for AuthPlex endpoints.
 
 ```
-User                          Your Frontend                    AuthCore
+User                          Your Frontend                    AuthPlex
  │                                │                               │
  │  Enter email + password        │                               │
  │ ─────────────────────────────► │                               │
@@ -83,10 +83,10 @@ User                          Your Frontend                    AuthCore
 
 ## Phase 2: JWT (Talking to Your APIs)
 
-The JWT access_token is self-contained — your API verifies it locally using AuthCore's public keys (JWKS), without ever calling AuthCore.
+The JWT access_token is self-contained — your API verifies it locally using AuthPlex's public keys (JWKS), without ever calling AuthPlex.
 
 ```
-Your Frontend                    Your Backend API               AuthCore
+Your Frontend                    Your Backend API               AuthPlex
  │                                │                               │
  │  GET /api/orders               │                               │
  │  Authorization: Bearer <JWT> ◄── access_token                 │
@@ -101,7 +101,7 @@ Your Frontend                    Your Backend API               AuthCore
  │                                │    aud = client ID            │
  │                                │    exp = still valid?         │
  │                                │                               │
- │  ◄── {orders: [...]}           │  ✅ No call to AuthCore       │
+ │  ◄── {orders: [...]}           │  ✅ No call to AuthPlex       │
  │                                │     JWT is self-contained     │
 ```
 
@@ -114,7 +114,7 @@ Your Frontend                    Your Backend API               AuthCore
 
 ## JWT Token Structure
 
-### Access Token (decoded from a real AuthCore response)
+### Access Token (decoded from a real AuthPlex response)
 
 ```
 ┌─────────── Header ───────────┐
@@ -125,7 +125,7 @@ Your Frontend                    Your Backend API               AuthCore
 │ }                             │
 ├─────────── Claims ───────────┤
 │ {                             │
-│   "iss": "https://authcore", │  ← Issuer
+│   "iss": "https://authplex", │  ← Issuer
 │   "sub": "gvMjYJoa...",     │  ← Subject (user ID)
 │   "aud": ["5_CoH-nr..."],   │  ← Audience (client ID)
 │   "exp": 1774646411,        │  ← Expires at (Unix timestamp)
@@ -157,7 +157,7 @@ Step 2: Fetch GET /jwks?tenant_id=my-tenant → find key matching "kid"
         (cache this — keys rarely change)
 Step 3: Verify RS256 signature using public key from JWKS
 Step 4: Check "exp" > now (token not expired)
-Step 5: Check "iss" = "https://authcore" (correct issuer)
+Step 5: Check "iss" = "https://authplex" (correct issuer)
 Step 6: Check "aud" contains your client_id (token is for you)
 Step 7: Read "sub" = user ID → your app knows who this is
 ```
@@ -169,14 +169,14 @@ Step 7: Read "sub" = user ID → your app knows who this is
 | | **Session Token** | **JWT (access_token)** |
 |--|-------------------|----------------------|
 | **When created** | On login, OTP verify | On /token exchange (PKCE) |
-| **Who uses it** | Your frontend → AuthCore only | Your frontend → your APIs |
-| **What it proves** | "This user is logged into AuthCore" | "This user is authorized to access resources" |
+| **Who uses it** | Your frontend → AuthPlex only | Your frontend → your APIs |
+| **What it proves** | "This user is logged into AuthPlex" | "This user is authorized to access resources" |
 | **Stored on server** | Yes (Redis, 24h TTL) | No (stateless — never stored) |
 | **Contains claims** | No (opaque ID) | Yes (sub, aud, exp, iss, jti) |
 | **Can be revoked** | Yes (delete from Redis, instant) | No (wait for 1h expiry, or use blacklist) |
-| **Verified by** | AuthCore Redis lookup | Any service via JWKS public key |
+| **Verified by** | AuthPlex Redis lookup | Any service via JWKS public key |
 | **Lifetime** | 24 hours | 1 hour |
-| **Sent as** | `Authorization: Bearer <session>` to AuthCore | `Authorization: Bearer <JWT>` to your APIs |
+| **Sent as** | `Authorization: Bearer <session>` to AuthPlex | `Authorization: Bearer <JWT>` to your APIs |
 | **If stolen** | Revoke immediately via /logout | Attacker has access for up to 1 hour |
 | **Offline verification** | No (needs Redis) | Yes (only needs cached JWKS) |
 
@@ -190,11 +190,11 @@ Step 7: Read "sub" = user ID → your app knows who this is
 | Admin force-logs out a user | Delete session → immediate | Requires blacklist check on every request |
 | /authorize needs to know who is logged in | Fast Redis lookup | Would need to verify signature + trust claims |
 | Mobile app calls your API offline | N/A | JWT verified locally, no network needed |
-| Microservice A calls Microservice B | N/A | JWT self-contained, no AuthCore hop |
+| Microservice A calls Microservice B | N/A | JWT self-contained, no AuthPlex hop |
 | User changes password | Revoke all sessions immediately | Old JWTs still valid until expiry |
 | Horizontal scaling | Redis shared across instances | No shared state needed |
 
-**Session = instant revocation for AuthCore's own endpoints.**
+**Session = instant revocation for AuthPlex's own endpoints.**
 **JWT = zero-network-hop authorization for your application's APIs.**
 
 ---
@@ -215,7 +215,7 @@ Step 3: POST /token + auth code + PKCE verifier
 
 Step 4: GET /api/your-resource + access_token (JWT)
         → Your API verifies JWT via JWKS
-        → Returns data (AuthCore not involved)
+        → Returns data (AuthPlex not involved)
 
 Step 5: Access token expires (1 hour)
         → POST /token + refresh_token
@@ -233,7 +233,7 @@ Step 6: POST /logout
 ## Storage Architecture
 
 ```
-CLIENT SIDE                          SERVER SIDE (AuthCore)
+CLIENT SIDE                          SERVER SIDE (AuthPlex)
 (browser / mobile)
                                      ┌──────────────────────────────┐
 ┌──────────────────┐                 │  Redis (ephemeral, TTL-based) │
@@ -279,7 +279,7 @@ Time 2h: access_token_2 expires
          → refresh_token_2 marked as "rotated"
 
 ATTACK:  Attacker tries to reuse refresh_token_1
-         → AuthCore detects: token already rotated!
+         → AuthPlex detects: token already rotated!
          → REVOKE ENTIRE FAMILY F1
          → All tokens (refresh_token_2, refresh_token_3) invalidated
          → User must re-login

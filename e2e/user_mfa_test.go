@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	domainmfa "github.com/authcore/internal/domain/mfa"
+	domainmfa "github.com/authplex/internal/domain/mfa"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

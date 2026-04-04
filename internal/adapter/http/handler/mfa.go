@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	mfasvc "github.com/authcore/internal/application/mfa"
-	"github.com/authcore/pkg/sdk/httputil"
+	mfasvc "github.com/authplex/internal/application/mfa"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // MFAHandler serves MFA endpoints.

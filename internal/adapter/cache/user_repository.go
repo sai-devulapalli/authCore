@@ -5,8 +5,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/authcore/internal/domain/user"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/user"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // InMemoryUserRepository implements user.Repository.
@@ -113,4 +113,26 @@ func (r *InMemoryUserRepository) IncrementTokenVersion(_ context.Context, id, te
 	u.TokenVersion++
 	r.users[id] = u
 	return nil
+}
+
+func (r *InMemoryUserRepository) ListByTenant(_ context.Context, tenantID string, offset, limit int) ([]user.User, int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var tenantUsers []user.User
+	for _, u := range r.users {
+		if u.TenantID == tenantID && u.DeletedAt == nil {
+			tenantUsers = append(tenantUsers, u)
+		}
+	}
+
+	total := len(tenantUsers)
+	if offset >= total {
+		return []user.User{}, total, nil
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	return tenantUsers[offset:end], total, nil
 }

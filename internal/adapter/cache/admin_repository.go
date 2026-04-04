@@ -5,8 +5,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/authcore/internal/domain/admin"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/admin"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // InMemoryAdminUserRepository implements admin.AdminUserRepository.

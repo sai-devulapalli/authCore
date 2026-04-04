@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/authcore/internal/application/jwks"
-	"github.com/authcore/internal/domain/jwk"
+	"github.com/authplex/internal/application/jwks"
+	"github.com/authplex/internal/domain/jwk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

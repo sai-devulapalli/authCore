@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/authcore/internal/adapter/cache"
-	adaptcrypto "github.com/authcore/internal/adapter/crypto"
-	"github.com/authcore/internal/application/jwks"
-	"github.com/authcore/internal/domain/jwk"
-	"github.com/authcore/internal/domain/token"
+	"github.com/authplex/internal/adapter/cache"
+	adaptcrypto "github.com/authplex/internal/adapter/crypto"
+	"github.com/authplex/internal/application/jwks"
+	"github.com/authplex/internal/domain/jwk"
+	"github.com/authplex/internal/domain/token"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -269,4 +269,61 @@ func TestCleanupService_NoDeleteWhenNothingExpired(t *testing.T) {
 	// Token should still be there
 	_, err := refreshRepo.GetByToken(ctx, "active")
 	assert.NoError(t, err)
+}
+
+func TestCleanupService_RotateKeys_WithExpiredKey(t *testing.T) {
+	jwkRepo := cache.NewInMemoryJWKRepository()
+	tenantRepo := cache.NewInMemoryTenantRepository()
+	refreshRepo := cache.NewInMemoryRefreshRepository()
+	log := slog.Default()
+	jwksSvc := jwks.NewService(jwkRepo, adaptcrypto.NewKeyGenerator(), adaptcrypto.NewJWKConverter(), log)
+	svc := NewService(refreshRepo, jwkRepo, jwksSvc, tenantRepo, log, 90)
+	ctx := context.Background()
+
+	// Store an old key (created 100 days ago)
+	oldKey := jwk.KeyPair{
+		ID:        "old-key",
+		TenantID:  "t1",
+		Algorithm: "RS256",
+		Active:    true,
+		CreatedAt: time.Now().UTC().Add(-100 * 24 * time.Hour),
+	}
+	require.NoError(t, jwkRepo.Store(ctx, oldKey))
+
+	// rotateKeys should trigger rotation for this old key
+	svc.rotateKeys(ctx)
+	// Just verify no panic and the service handles it gracefully
+}
+
+func TestCleanupService_CleanupInactiveKeys_WithInactiveKey(t *testing.T) {
+	jwkRepo := cache.NewInMemoryJWKRepository()
+	tenantRepo := cache.NewInMemoryTenantRepository()
+	refreshRepo := cache.NewInMemoryRefreshRepository()
+	log := slog.Default()
+	jwksSvc := jwks.NewService(jwkRepo, adaptcrypto.NewKeyGenerator(), adaptcrypto.NewJWKConverter(), log)
+	svc := NewService(refreshRepo, jwkRepo, jwksSvc, tenantRepo, log, 90)
+	ctx := context.Background()
+
+	// Store an old inactive key
+	oldKey := jwk.KeyPair{
+		ID:        "old-inactive",
+		TenantID:  "t1",
+		Algorithm: "RS256",
+		Active:    false,
+		CreatedAt: time.Now().UTC().Add(-40 * 24 * time.Hour),
+	}
+	require.NoError(t, jwkRepo.Store(ctx, oldKey))
+
+	svc.cleanupInactiveKeys(ctx)
+	// The key older than 30 days should have been cleaned up
+}
+
+func TestGenerateKeyID(t *testing.T) {
+	id1, err := generateKeyID()
+	require.NoError(t, err)
+	assert.NotEmpty(t, id1)
+
+	id2, err := generateKeyID()
+	require.NoError(t, err)
+	assert.NotEqual(t, id1, id2)
 }

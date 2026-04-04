@@ -1,6 +1,6 @@
 package tenant
 
-import "github.com/authcore/internal/domain/tenant"
+import "github.com/authplex/internal/domain/tenant"
 
 // CreateTenantRequest is the DTO for creating a new tenant.
 type CreateTenantRequest struct {

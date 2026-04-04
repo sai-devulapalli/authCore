@@ -1,4 +1,4 @@
-# AuthCore — Compliance Analysis
+# AuthPlex — Compliance Analysis
 
 ## Current Compliance Posture
 
@@ -7,14 +7,14 @@
 | GDPR (EU data protection) | Partial | No data export API, no hard delete, no consent management |
 | SOC 2 Type II | Partial | Audit logging done. Missing: access reviews, pen test |
 | HIPAA (healthcare) | Partial | Audit trail done. Missing: BAA, TLS enforcement |
-| PCI DSS (payments) | Not applicable | AuthCore does not store payment data |
+| PCI DSS (payments) | Not applicable | AuthPlex does not store payment data |
 | ISO 27001 | Not ready | No ISMS, no risk assessment documentation |
 | CCPA (California privacy) | Partial | Same gaps as GDPR |
 | OWASP Top 10 | 9 of 10 covered | Missing security headers (CSP, HSTS) |
 
 ---
 
-## What AuthCore Already Has
+## What AuthPlex Already Has
 
 | Control | Implementation | Standards Satisfied |
 |---------|---------------|-------------------|
@@ -42,7 +42,7 @@
 
 ## OWASP Top 10 Coverage
 
-| # | Vulnerability | Status | AuthCore Implementation |
+| # | Vulnerability | Status | AuthPlex Implementation |
 |---|--------------|--------|------------------------|
 | A01 | Broken Access Control | Covered | Per-tenant isolation, client enforcement, scope validation, admin API key |
 | A02 | Cryptographic Failures | Covered | AES-256-GCM at rest, bcrypt passwords, RS256/ES256 JWTs, PKCE S256 |
@@ -86,7 +86,7 @@
 | CC6.1 | Audit logging | Done | 25+ event types: login, register, OTP, MFA, token, session, tenant, client, role, provider, admin API |
 | CC6.2 | Access reviews | Missing | API to list admin access, when granted, by whom |
 | CC6.3 | Change management | Partial | Git history exists. Need formal approval process |
-| CC6.6 | Encryption in transit | Partial | AuthCore relies on reverse proxy for TLS |
+| CC6.6 | Encryption in transit | Partial | AuthPlex relies on reverse proxy for TLS |
 | CC6.7 | Encryption at rest | Done | AES-256-GCM |
 | CC7.1 | Incident response | Missing | Alerting on failed logins, brute force, token replay |
 | CC7.2 | Monitoring | Partial | Structured logging + OpenTelemetry tracing. No metrics or dashboards |
@@ -171,7 +171,7 @@
 
 ## Compliance vs Competitors
 
-| Standard | **AuthCore** | **Keycloak** | **IdentityServer** | **Cognito** |
+| Standard | **AuthPlex** | **Keycloak** | **IdentityServer** | **Cognito** |
 |----------|:-:|:-:|:-:|:-:|
 | OWASP Top 10 | 9/10 | 10/10 | 7/10 | 10/10 |
 | GDPR ready | Partial | Yes | Partial | Yes |

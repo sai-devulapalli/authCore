@@ -17,34 +17,34 @@
 #   SMS_FROM_NUMBER=+1234567890 (optional)
 
 services:
-  authcore:
-    image: authcore:latest
+  authplex:
+    image: authplex:latest
     build: .
     ports:
       - "8080:8080"
     environment:
-      AUTHCORE_ENV: production
-      AUTHCORE_HTTP_PORT: 8080
-      AUTHCORE_DATABASE_DSN: postgres://authcore:${DB_PASSWORD}@postgres:5432/authcore?sslmode=require
-      AUTHCORE_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
-      AUTHCORE_ADMIN_API_KEY: ${ADMIN_API_KEY}
-      AUTHCORE_ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      AUTHCORE_ISSUER: ${ISSUER}
-      AUTHCORE_CORS_ORIGINS: ${CORS_ORIGINS}
-      AUTHCORE_TENANT_MODE: header
-      AUTHCORE_KEY_ROTATION_DAYS: "90"
-      AUTHCORE_SMTP_HOST: ${SMTP_HOST:-}
-      AUTHCORE_SMTP_PORT: "587"
-      AUTHCORE_SMTP_USERNAME: ${SMTP_USERNAME:-}
-      AUTHCORE_SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      AUTHCORE_SMTP_FROM: ${SMTP_FROM:-noreply@authcore.local}
-      AUTHCORE_SMS_PROVIDER: ${SMS_PROVIDER:-}
-      AUTHCORE_SMS_ACCOUNT_ID: ${SMS_ACCOUNT_ID:-}
-      AUTHCORE_SMS_AUTH_TOKEN: ${SMS_AUTH_TOKEN:-}
-      AUTHCORE_SMS_FROM_NUMBER: ${SMS_FROM_NUMBER:-}
-      AUTHCORE_WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-localhost}
-      AUTHCORE_WEBAUTHN_RP_NAME: ${WEBAUTHN_RP_NAME:-AuthCore}
-      AUTHCORE_WEBAUTHN_RP_ORIGINS: ${WEBAUTHN_RP_ORIGINS:-http://localhost:8080}
+      AUTHPLEX_ENV: production
+      AUTHPLEX_HTTP_PORT: 8080
+      AUTHPLEX_DATABASE_DSN: postgres://authplex:${DB_PASSWORD}@postgres:5432/authplex?sslmode=require
+      AUTHPLEX_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      AUTHPLEX_ADMIN_API_KEY: ${ADMIN_API_KEY}
+      AUTHPLEX_ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      AUTHPLEX_ISSUER: ${ISSUER}
+      AUTHPLEX_CORS_ORIGINS: ${CORS_ORIGINS}
+      AUTHPLEX_TENANT_MODE: header
+      AUTHPLEX_KEY_ROTATION_DAYS: "90"
+      AUTHPLEX_SMTP_HOST: ${SMTP_HOST:-}
+      AUTHPLEX_SMTP_PORT: "587"
+      AUTHPLEX_SMTP_USERNAME: ${SMTP_USERNAME:-}
+      AUTHPLEX_SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      AUTHPLEX_SMTP_FROM: ${SMTP_FROM:-noreply@authplex.local}
+      AUTHPLEX_SMS_PROVIDER: ${SMS_PROVIDER:-}
+      AUTHPLEX_SMS_ACCOUNT_ID: ${SMS_ACCOUNT_ID:-}
+      AUTHPLEX_SMS_AUTH_TOKEN: ${SMS_AUTH_TOKEN:-}
+      AUTHPLEX_SMS_FROM_NUMBER: ${SMS_FROM_NUMBER:-}
+      AUTHPLEX_WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-localhost}
+      AUTHPLEX_WEBAUTHN_RP_NAME: ${WEBAUTHN_RP_NAME:-AuthPlex}
+      AUTHPLEX_WEBAUTHN_RP_ORIGINS: ${WEBAUTHN_RP_ORIGINS:-http://localhost:8080}
     depends_on:
       postgres:
         condition: service_healthy
@@ -66,13 +66,13 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: authcore
-      POSTGRES_USER: authcore
+      POSTGRES_DB: authplex
+      POSTGRES_USER: authplex
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata_prod:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U authcore"]
+      test: ["CMD-SHELL", "pg_isready -U authplex"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -105,7 +105,7 @@ services:
       - ./nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
       - ./certs:/etc/nginx/certs:ro
     depends_on:
-      authcore:
+      authplex:
         condition: service_healthy
     restart: always
 

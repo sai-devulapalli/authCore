@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/authcore/internal/adapter/http/oauth"
-	"github.com/authcore/internal/application/auth"
-	"github.com/authcore/internal/domain/identity"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/adapter/http/oauth"
+	"github.com/authplex/internal/application/auth"
+	"github.com/authplex/internal/domain/identity"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // Service provides social login operations.
@@ -184,7 +184,7 @@ func (s *Service) HandleCallback(ctx context.Context, req CallbackRequest) (auth
 		return auth.AuthorizeResponse{}, linkErr
 	}
 
-	// Issue AuthCore authorization code
+	// Issue AuthPlex authorization code
 	authReq := auth.AuthorizeRequest{
 		ResponseType:        "code",
 		ClientID:            oauthState.OriginalClientID,

@@ -1,4 +1,4 @@
-# AuthCore — Deployment Guide
+# AuthPlex — Deployment Guide
 
 > **Image size:** ~15MB | **RAM:** <300MB | **Binary:** single static Go binary
 
@@ -30,7 +30,7 @@
 make build
 
 # Run in local mode (in-memory storage, no Postgres/Redis needed)
-./bin/authcore
+./bin/authplex
 # → Listening on :8080, in-memory storage, dev mode
 
 # Verify
@@ -46,12 +46,12 @@ curl http://localhost:8080/health
 # Start Postgres + Redis
 docker-compose up -d
 
-# Build and run AuthCore
+# Build and run AuthPlex
 make build
-AUTHCORE_ENV=staging \
-AUTHCORE_DATABASE_DSN="postgres://authcore:authcore_dev@localhost:5432/authcore?sslmode=disable" \
-AUTHCORE_REDIS_URL="redis://localhost:6379" \
-./bin/authcore
+AUTHPLEX_ENV=staging \
+AUTHPLEX_DATABASE_DSN="postgres://authplex:authplex_dev@localhost:5432/authplex?sslmode=disable" \
+AUTHPLEX_REDIS_URL="redis://localhost:6379" \
+./bin/authplex
 ```
 
 Or use the Docker image:
@@ -59,15 +59,15 @@ Or use the Docker image:
 ```bash
 # Build Docker image
 make docker
-# → authcore:latest (~15MB)
+# → authplex:latest (~15MB)
 
 # Run with docker
 docker run -p 8080:8080 \
-  -e AUTHCORE_ENV=staging \
-  -e AUTHCORE_DATABASE_DSN="postgres://authcore:authcore_dev@postgres:5432/authcore?sslmode=disable" \
-  -e AUTHCORE_REDIS_URL="redis://redis:6379" \
+  -e AUTHPLEX_ENV=staging \
+  -e AUTHPLEX_DATABASE_DSN="postgres://authplex:authplex_dev@postgres:5432/authplex?sslmode=disable" \
+  -e AUTHPLEX_REDIS_URL="redis://redis:6379" \
   --network host \
-  authcore:latest
+  authplex:latest
 ```
 
 ---
@@ -77,33 +77,33 @@ docker run -p 8080:8080 \
 ```yaml
 # docker-compose.prod.yml
 services:
-  authcore:
-    image: authcore:latest
+  authplex:
+    image: authplex:latest
     ports:
       - "8080:8080"
     environment:
-      AUTHCORE_ENV: production
-      AUTHCORE_HTTP_PORT: 8080
-      AUTHCORE_DATABASE_DSN: postgres://authcore:${DB_PASSWORD}@postgres:5432/authcore?sslmode=require
-      AUTHCORE_REDIS_URL: redis://redis:6379
-      AUTHCORE_ADMIN_API_KEY: ${ADMIN_API_KEY}
-      AUTHCORE_ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      AUTHCORE_ISSUER: https://auth.myapp.com
-      AUTHCORE_CORS_ORIGINS: https://myapp.com,https://admin.myapp.com
-      AUTHCORE_TENANT_MODE: header
-      AUTHCORE_KEY_ROTATION_DAYS: 90
-      AUTHCORE_SMTP_HOST: smtp.sendgrid.net
-      AUTHCORE_SMTP_PORT: 587
-      AUTHCORE_SMTP_USERNAME: apikey
-      AUTHCORE_SMTP_PASSWORD: ${SENDGRID_API_KEY}
-      AUTHCORE_SMTP_FROM: noreply@myapp.com
-      AUTHCORE_SMS_PROVIDER: twilio
-      AUTHCORE_SMS_ACCOUNT_ID: ${TWILIO_ACCOUNT_SID}
-      AUTHCORE_SMS_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
-      AUTHCORE_SMS_FROM_NUMBER: ${TWILIO_FROM_NUMBER}
-      AUTHCORE_WEBAUTHN_RP_ID: myapp.com
-      AUTHCORE_WEBAUTHN_RP_NAME: MyApp
-      AUTHCORE_WEBAUTHN_RP_ORIGINS: https://myapp.com
+      AUTHPLEX_ENV: production
+      AUTHPLEX_HTTP_PORT: 8080
+      AUTHPLEX_DATABASE_DSN: postgres://authplex:${DB_PASSWORD}@postgres:5432/authplex?sslmode=require
+      AUTHPLEX_REDIS_URL: redis://redis:6379
+      AUTHPLEX_ADMIN_API_KEY: ${ADMIN_API_KEY}
+      AUTHPLEX_ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      AUTHPLEX_ISSUER: https://auth.myapp.com
+      AUTHPLEX_CORS_ORIGINS: https://myapp.com,https://admin.myapp.com
+      AUTHPLEX_TENANT_MODE: header
+      AUTHPLEX_KEY_ROTATION_DAYS: 90
+      AUTHPLEX_SMTP_HOST: smtp.sendgrid.net
+      AUTHPLEX_SMTP_PORT: 587
+      AUTHPLEX_SMTP_USERNAME: apikey
+      AUTHPLEX_SMTP_PASSWORD: ${SENDGRID_API_KEY}
+      AUTHPLEX_SMTP_FROM: noreply@myapp.com
+      AUTHPLEX_SMS_PROVIDER: twilio
+      AUTHPLEX_SMS_ACCOUNT_ID: ${TWILIO_ACCOUNT_SID}
+      AUTHPLEX_SMS_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      AUTHPLEX_SMS_FROM_NUMBER: ${TWILIO_FROM_NUMBER}
+      AUTHPLEX_WEBAUTHN_RP_ID: myapp.com
+      AUTHPLEX_WEBAUTHN_RP_NAME: MyApp
+      AUTHPLEX_WEBAUTHN_RP_ORIGINS: https://myapp.com
     depends_on:
       postgres:
         condition: service_healthy
@@ -125,13 +125,13 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: authcore
-      POSTGRES_USER: authcore
+      POSTGRES_DB: authplex
+      POSTGRES_USER: authplex
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U authcore"]
+      test: ["CMD-SHELL", "pg_isready -U authplex"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -156,7 +156,7 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/nginx/certs:ro
     depends_on:
-      - authcore
+      - authplex
     restart: always
 
 volumes:
@@ -192,22 +192,22 @@ docker-compose -f docker-compose.prod.yml --env-file .env up -d
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: authcore
+  name: authplex
   labels:
-    app: authcore
+    app: authplex
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: authcore
+      app: authplex
   template:
     metadata:
       labels:
-        app: authcore
+        app: authplex
     spec:
       containers:
-      - name: authcore
-        image: authcore:latest
+      - name: authplex
+        image: authplex:latest
         ports:
         - containerPort: 8080
         resources:
@@ -218,35 +218,35 @@ spec:
             memory: "256Mi"
             cpu: "500m"
         env:
-        - name: AUTHCORE_ENV
+        - name: AUTHPLEX_ENV
           value: production
-        - name: AUTHCORE_ISSUER
+        - name: AUTHPLEX_ISSUER
           value: https://auth.myapp.com
-        - name: AUTHCORE_CORS_ORIGINS
+        - name: AUTHPLEX_CORS_ORIGINS
           value: https://myapp.com
-        - name: AUTHCORE_TENANT_MODE
+        - name: AUTHPLEX_TENANT_MODE
           value: header
-        - name: AUTHCORE_KEY_ROTATION_DAYS
+        - name: AUTHPLEX_KEY_ROTATION_DAYS
           value: "90"
-        - name: AUTHCORE_DATABASE_DSN
+        - name: AUTHPLEX_DATABASE_DSN
           valueFrom:
             secretKeyRef:
-              name: authcore-secrets
+              name: authplex-secrets
               key: database-dsn
-        - name: AUTHCORE_REDIS_URL
+        - name: AUTHPLEX_REDIS_URL
           valueFrom:
             secretKeyRef:
-              name: authcore-secrets
+              name: authplex-secrets
               key: redis-url
-        - name: AUTHCORE_ADMIN_API_KEY
+        - name: AUTHPLEX_ADMIN_API_KEY
           valueFrom:
             secretKeyRef:
-              name: authcore-secrets
+              name: authplex-secrets
               key: admin-api-key
-        - name: AUTHCORE_ENCRYPTION_KEY
+        - name: AUTHPLEX_ENCRYPTION_KEY
           valueFrom:
             secretKeyRef:
-              name: authcore-secrets
+              name: authplex-secrets
               key: encryption-key
         livenessProbe:
           httpGet:
@@ -264,10 +264,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: authcore
+  name: authplex
 spec:
   selector:
-    app: authcore
+    app: authplex
   ports:
   - port: 80
     targetPort: 8080
@@ -276,13 +276,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: authcore
+  name: authplex
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   tls:
   - hosts: [auth.myapp.com]
-    secretName: authcore-tls
+    secretName: authplex-tls
   rules:
   - host: auth.myapp.com
     http:
@@ -291,7 +291,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: authcore
+            name: authplex
             port:
               number: 80
 ```
@@ -299,8 +299,8 @@ spec:
 ### Secrets
 
 ```bash
-kubectl create secret generic authcore-secrets \
-  --from-literal=database-dsn='postgres://authcore:pass@postgres:5432/authcore?sslmode=require' \
+kubectl create secret generic authplex-secrets \
+  --from-literal=database-dsn='postgres://authplex:pass@postgres:5432/authplex?sslmode=require' \
   --from-literal=redis-url='redis://:pass@redis:6379' \
   --from-literal=admin-api-key='your-admin-key' \
   --from-literal=encryption-key='hex-32-byte-key'
@@ -309,27 +309,27 @@ kubectl create secret generic authcore-secrets \
 ### Sidecar Pattern
 
 ```yaml
-# Add AuthCore as a sidecar in your app's pod
+# Add AuthPlex as a sidecar in your app's pod
 spec:
   containers:
   - name: my-app
     image: my-app:latest
     ports: [{containerPort: 3000}]
     env:
-    - name: AUTHCORE_URL
+    - name: AUTHPLEX_URL
       value: http://localhost:8080   # same pod, localhost
 
-  - name: authcore
-    image: authcore:latest
+  - name: authplex
+    image: authplex:latest
     ports: [{containerPort: 8080}]
     resources:
       requests: {memory: "128Mi", cpu: "100m"}
       limits: {memory: "256Mi", cpu: "500m"}
     env:
-    - name: AUTHCORE_ENV
+    - name: AUTHPLEX_ENV
       value: production
-    - name: AUTHCORE_DATABASE_DSN
-      valueFrom: {secretKeyRef: {name: authcore-secrets, key: database-dsn}}
+    - name: AUTHPLEX_DATABASE_DSN
+      valueFrom: {secretKeyRef: {name: authplex-secrets, key: database-dsn}}
 ```
 
 ---
@@ -339,11 +339,11 @@ spec:
 ```bash
 # 1. Push image to ECR
 aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_URI
-docker tag authcore:latest $ECR_URI/authcore:latest
-docker push $ECR_URI/authcore:latest
+docker tag authplex:latest $ECR_URI/authplex:latest
+docker push $ECR_URI/authplex:latest
 
 # 2. Create task definition (via console or CLI)
-# - Image: $ECR_URI/authcore:latest
+# - Image: $ECR_URI/authplex:latest
 # - Port: 8080
 # - CPU: 256 (.25 vCPU)
 # - Memory: 512MB
@@ -351,7 +351,7 @@ docker push $ECR_URI/authcore:latest
 
 # 3. Create service
 # - Cluster: your-cluster
-# - Service: authcore
+# - Service: authplex
 # - Desired count: 2
 # - Load balancer: ALB with HTTPS listener
 # - Health check: /health
@@ -378,19 +378,19 @@ docker push $ECR_URI/authcore:latest
 
 ```bash
 # 1. Build and push
-gcloud builds submit --tag gcr.io/$PROJECT/authcore
+gcloud builds submit --tag gcr.io/$PROJECT/authplex
 
 # 2. Deploy
-gcloud run deploy authcore \
-  --image gcr.io/$PROJECT/authcore \
+gcloud run deploy authplex \
+  --image gcr.io/$PROJECT/authplex \
   --platform managed \
   --port 8080 \
   --memory 256Mi \
   --cpu 1 \
   --min-instances 1 \
   --max-instances 10 \
-  --set-env-vars "AUTHCORE_ENV=production,AUTHCORE_ISSUER=https://auth.myapp.com" \
-  --set-secrets "AUTHCORE_DATABASE_DSN=authcore-db-dsn:latest,AUTHCORE_ADMIN_API_KEY=authcore-admin-key:latest"
+  --set-env-vars "AUTHPLEX_ENV=production,AUTHPLEX_ISSUER=https://auth.myapp.com" \
+  --set-secrets "AUTHPLEX_DATABASE_DSN=authplex-db-dsn:latest,AUTHPLEX_ADMIN_API_KEY=authplex-admin-key:latest"
 
 # 3. Infrastructure
 # - Cloud SQL PostgreSQL
@@ -409,28 +409,28 @@ gcloud run deploy authcore \
 make build VERSION=1.0.0
 
 # 2. Copy to server
-scp bin/authcore user@server:/opt/authcore/
+scp bin/authplex user@server:/opt/authplex/
 
 # 3. Create systemd service
-cat > /etc/systemd/system/authcore.service << 'EOF'
+cat > /etc/systemd/system/authplex.service << 'EOF'
 [Unit]
-Description=AuthCore Identity Server
+Description=AuthPlex Identity Server
 After=network.target postgresql.service redis.service
 
 [Service]
 Type=simple
-User=authcore
-Group=authcore
-WorkingDirectory=/opt/authcore
-ExecStart=/opt/authcore/authcore
+User=authplex
+Group=authplex
+WorkingDirectory=/opt/authplex
+ExecStart=/opt/authplex/authplex
 Restart=always
 RestartSec=5
 LimitNOFILE=65536
 
-Environment=AUTHCORE_ENV=production
-Environment=AUTHCORE_HTTP_PORT=8080
-Environment=AUTHCORE_ISSUER=https://auth.myapp.com
-EnvironmentFile=/opt/authcore/.env
+Environment=AUTHPLEX_ENV=production
+Environment=AUTHPLEX_HTTP_PORT=8080
+Environment=AUTHPLEX_ISSUER=https://auth.myapp.com
+EnvironmentFile=/opt/authplex/.env
 
 [Install]
 WantedBy=multi-user.target
@@ -438,8 +438,8 @@ EOF
 
 # 4. Start
 systemctl daemon-reload
-systemctl enable authcore
-systemctl start authcore
+systemctl enable authplex
+systemctl start authplex
 
 # 5. Nginx reverse proxy with TLS
 # See nginx.conf example below
@@ -477,28 +477,28 @@ server {
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
-| `AUTHCORE_ENV` | `local` | No | `local`, `staging`, `production` |
-| `AUTHCORE_HTTP_PORT` | `8080` | No | Server listen port |
-| `AUTHCORE_ISSUER` | `http://localhost:8080` | **Yes (prod)** | OAuth issuer URL (must match your domain) |
-| `AUTHCORE_DATABASE_DSN` | (Postgres default) | **Yes (prod)** | PostgreSQL connection string |
-| `AUTHCORE_REDIS_URL` | `redis://localhost:6379` | No | Redis URL (omit for in-memory fallback) |
-| `AUTHCORE_ADMIN_API_KEY` | (empty = no auth) | **Yes (prod)** | Management API authentication key |
-| `AUTHCORE_ENCRYPTION_KEY` | (empty) | Recommended | AES-256-GCM key for encryption at rest (hex-encoded 32 bytes) |
-| `AUTHCORE_TENANT_MODE` | `header` | No | `header` (X-Tenant-ID) or `domain` (Host header) |
-| `AUTHCORE_CORS_ORIGINS` | `*` | **Yes (prod)** | Comma-separated allowed origins |
-| `AUTHCORE_KEY_ROTATION_DAYS` | `90` | No | Automatic signing key rotation interval |
-| `AUTHCORE_SMTP_HOST` | (empty) | For email | SMTP server for email OTP |
-| `AUTHCORE_SMTP_PORT` | `587` | For email | SMTP port |
-| `AUTHCORE_SMTP_USERNAME` | (empty) | For email | SMTP auth username |
-| `AUTHCORE_SMTP_PASSWORD` | (empty) | For email | SMTP auth password |
-| `AUTHCORE_SMTP_FROM` | `noreply@authcore.local` | For email | Sender email address |
-| `AUTHCORE_SMS_PROVIDER` | (empty) | For SMS | `twilio` or empty (console) |
-| `AUTHCORE_SMS_ACCOUNT_ID` | (empty) | For SMS | Twilio Account SID |
-| `AUTHCORE_SMS_AUTH_TOKEN` | (empty) | For SMS | Twilio Auth Token |
-| `AUTHCORE_SMS_FROM_NUMBER` | (empty) | For SMS | Twilio sender number |
-| `AUTHCORE_WEBAUTHN_RP_ID` | `localhost` | For WebAuthn | Relying Party ID (your domain) |
-| `AUTHCORE_WEBAUTHN_RP_NAME` | `AuthCore` | For WebAuthn | Display name in browser prompt |
-| `AUTHCORE_WEBAUTHN_RP_ORIGINS` | `http://localhost:8080` | For WebAuthn | Comma-separated allowed origins |
+| `AUTHPLEX_ENV` | `local` | No | `local`, `staging`, `production` |
+| `AUTHPLEX_HTTP_PORT` | `8080` | No | Server listen port |
+| `AUTHPLEX_ISSUER` | `http://localhost:8080` | **Yes (prod)** | OAuth issuer URL (must match your domain) |
+| `AUTHPLEX_DATABASE_DSN` | (Postgres default) | **Yes (prod)** | PostgreSQL connection string |
+| `AUTHPLEX_REDIS_URL` | `redis://localhost:6379` | No | Redis URL (omit for in-memory fallback) |
+| `AUTHPLEX_ADMIN_API_KEY` | (empty = no auth) | **Yes (prod)** | Management API authentication key |
+| `AUTHPLEX_ENCRYPTION_KEY` | (empty) | Recommended | AES-256-GCM key for encryption at rest (hex-encoded 32 bytes) |
+| `AUTHPLEX_TENANT_MODE` | `header` | No | `header` (X-Tenant-ID) or `domain` (Host header) |
+| `AUTHPLEX_CORS_ORIGINS` | `*` | **Yes (prod)** | Comma-separated allowed origins |
+| `AUTHPLEX_KEY_ROTATION_DAYS` | `90` | No | Automatic signing key rotation interval |
+| `AUTHPLEX_SMTP_HOST` | (empty) | For email | SMTP server for email OTP |
+| `AUTHPLEX_SMTP_PORT` | `587` | For email | SMTP port |
+| `AUTHPLEX_SMTP_USERNAME` | (empty) | For email | SMTP auth username |
+| `AUTHPLEX_SMTP_PASSWORD` | (empty) | For email | SMTP auth password |
+| `AUTHPLEX_SMTP_FROM` | `noreply@authplex.local` | For email | Sender email address |
+| `AUTHPLEX_SMS_PROVIDER` | (empty) | For SMS | `twilio` or empty (console) |
+| `AUTHPLEX_SMS_ACCOUNT_ID` | (empty) | For SMS | Twilio Account SID |
+| `AUTHPLEX_SMS_AUTH_TOKEN` | (empty) | For SMS | Twilio Auth Token |
+| `AUTHPLEX_SMS_FROM_NUMBER` | (empty) | For SMS | Twilio sender number |
+| `AUTHPLEX_WEBAUTHN_RP_ID` | `localhost` | For WebAuthn | Relying Party ID (your domain) |
+| `AUTHPLEX_WEBAUTHN_RP_NAME` | `AuthPlex` | For WebAuthn | Display name in browser prompt |
+| `AUTHPLEX_WEBAUTHN_RP_ORIGINS` | `http://localhost:8080` | For WebAuthn | Comma-separated allowed origins |
 
 ### Generating Secrets
 
@@ -519,31 +519,31 @@ openssl rand -base64 24
 
 ### Security
 
-- [ ] `AUTHCORE_ADMIN_API_KEY` is set (non-empty, 32+ chars)
-- [ ] `AUTHCORE_ENCRYPTION_KEY` is set (protects sensitive data at rest)
-- [ ] `AUTHCORE_CORS_ORIGINS` lists specific domains (not `*`)
-- [ ] `AUTHCORE_ISSUER` matches your public domain (e.g., `https://auth.myapp.com`)
+- [ ] `AUTHPLEX_ADMIN_API_KEY` is set (non-empty, 32+ chars)
+- [ ] `AUTHPLEX_ENCRYPTION_KEY` is set (protects sensitive data at rest)
+- [ ] `AUTHPLEX_CORS_ORIGINS` lists specific domains (not `*`)
+- [ ] `AUTHPLEX_ISSUER` matches your public domain (e.g., `https://auth.myapp.com`)
 - [ ] TLS termination configured (nginx/ALB/CloudFront in front)
 - [ ] Database connection uses `sslmode=require`
 - [ ] Redis connection uses password authentication
 - [ ] All secrets stored in secret manager (not in env files on disk)
-- [ ] `AUTHCORE_ENV` set to `production` (error-level JSON logging)
+- [ ] `AUTHPLEX_ENV` set to `production` (error-level JSON logging)
 
 ### Infrastructure
 
 - [ ] PostgreSQL provisioned with automatic backups
 - [ ] Redis provisioned (optional — falls back to in-memory)
-- [ ] At least 2 AuthCore instances for availability
+- [ ] At least 2 AuthPlex instances for availability
 - [ ] Health check configured on load balancer (`GET /health`)
 - [ ] DNS pointed to load balancer
 - [ ] TLS certificate provisioned (Let's Encrypt / ACM)
 
 ### Compliance (Sidecar Mode)
 
-When running as a sidecar, compliance certifications (SOC2, HIPAA, PCI-DSS) are **your app's responsibility**. AuthCore inherits your infrastructure's compliance posture. AuthCore provides the building blocks auditors need:
+When running as a sidecar, compliance certifications (SOC2, HIPAA, PCI-DSS) are **your app's responsibility**. AuthPlex inherits your infrastructure's compliance posture. AuthPlex provides the building blocks auditors need:
 
 - [ ] Audit logging enabled (25+ event types, tamper-proof, auto-wired)
-- [ ] Encryption at rest configured (`AUTHCORE_ENCRYPTION_KEY`)
+- [ ] Encryption at rest configured (`AUTHPLEX_ENCRYPTION_KEY`)
 - [ ] Refresh tokens hashed (SHA-256 — automatic)
 - [ ] JWT signature verification active (automatic)
 - [ ] Row-Level Security enabled on Postgres (migration 015)
@@ -622,11 +622,11 @@ curl -X POST https://auth.myapp.com/login \
 
 ### OpenTelemetry
 
-AuthCore includes OTel tracing middleware. Export traces to Jaeger, Zipkin, or any OTLP collector:
+AuthPlex includes OTel tracing middleware. Export traces to Jaeger, Zipkin, or any OTLP collector:
 
 ```bash
 OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318 \
-./bin/authcore
+./bin/authplex
 ```
 
 ---
@@ -637,10 +637,10 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318 \
 
 ```bash
 # Daily backup (add to cron)
-pg_dump -h localhost -U authcore authcore | gzip > backup-$(date +%Y%m%d).sql.gz
+pg_dump -h localhost -U authplex authplex | gzip > backup-$(date +%Y%m%d).sql.gz
 
 # Restore
-gunzip < backup-20260329.sql.gz | psql -h localhost -U authcore authcore
+gunzip < backup-20260329.sql.gz | psql -h localhost -U authplex authplex
 ```
 
 ### Redis (Optional)
@@ -667,7 +667,7 @@ cp /var/lib/redis/dump.rdb backup-redis-$(date +%Y%m%d).rdb
 
 ### Horizontal Scaling
 
-AuthCore is **stateless** — add more instances behind a load balancer.
+AuthPlex is **stateless** — add more instances behind a load balancer.
 
 ```
               ┌──────────────┐
@@ -688,7 +688,7 @@ AuthCore is **stateless** — add more instances behind a load balancer.
 
 ### Sizing Guide
 
-| Users | AuthCore Instances | Postgres | Redis | Est. Cost |
+| Users | AuthPlex Instances | Postgres | Redis | Est. Cost |
 |-------|-------------------|----------|-------|-----------|
 | 1K | 1 | db.t3.micro | cache.t3.micro | ~$30/mo |
 | 10K | 2 | db.t3.small | cache.t3.micro | ~$60/mo |
@@ -699,7 +699,7 @@ AuthCore is **stateless** — add more instances behind a load balancer.
 
 | Bottleneck | Symptom | Fix |
 |-----------|---------|-----|
-| CPU | High latency on bcrypt/JWT signing | Add AuthCore instances |
+| CPU | High latency on bcrypt/JWT signing | Add AuthPlex instances |
 | Postgres connections | Connection pool exhaustion | Increase pool size, add PgBouncer |
 | Postgres reads | Slow list/query operations | Add read replicas |
 | Redis memory | OOM errors | Increase instance size, shorter TTLs |
@@ -710,25 +710,25 @@ AuthCore is **stateless** — add more instances behind a load balancer.
 
 ### 1. Standalone Service (Most Common)
 
-AuthCore runs as its own service. Your apps call it via HTTP.
+AuthPlex runs as its own service. Your apps call it via HTTP.
 
 **Best for:** Most teams. Simple, clear boundary.
 
 ### 2. Sidecar (Kubernetes)
 
-AuthCore runs in the same pod as your app. `localhost:8080`, sub-ms latency.
+AuthPlex runs in the same pod as your app. `localhost:8080`, sub-ms latency.
 
 **Best for:** Microservices where each service needs auth. ~15MB, ~128Mi RAM overhead per pod.
 
 ### 3. Edge Auth (API Gateway)
 
-AuthCore sits behind/inside your API gateway. All auth happens at the edge.
+AuthPlex sits behind/inside your API gateway. All auth happens at the edge.
 
 **Best for:** Teams already using Kong, Envoy, or Traefik. Backend services just read JWT claims.
 
 ### 4. Embedded (Go SDK)
 
-AuthCore is a library inside your Go app. No separate process.
+AuthPlex is a library inside your Go app. No separate process.
 
 **Best for:** Go monoliths. Zero network overhead.
 
@@ -738,35 +738,35 @@ AuthCore is a library inside your Go app. No separate process.
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| `health` returns 503 | Database unreachable | Check `AUTHCORE_DATABASE_DSN`, verify Postgres is running |
-| `connection refused` on :8080 | AuthCore not started | Check logs: `journalctl -u authcore` or `docker logs authcore` |
-| 401 on management endpoints | Wrong or missing API key | Verify `AUTHCORE_ADMIN_API_KEY` matches your `Authorization: Bearer` header |
-| CORS errors in browser | Origins not configured | Set `AUTHCORE_CORS_ORIGINS` to your frontend domain |
-| JWT verification fails | Issuer mismatch | Ensure `AUTHCORE_ISSUER` matches the `iss` claim clients expect |
-| Sessions lost on restart | No Redis configured | Set `AUTHCORE_REDIS_URL` for persistent sessions |
+| `health` returns 503 | Database unreachable | Check `AUTHPLEX_DATABASE_DSN`, verify Postgres is running |
+| `connection refused` on :8080 | AuthPlex not started | Check logs: `journalctl -u authplex` or `docker logs authplex` |
+| 401 on management endpoints | Wrong or missing API key | Verify `AUTHPLEX_ADMIN_API_KEY` matches your `Authorization: Bearer` header |
+| CORS errors in browser | Origins not configured | Set `AUTHPLEX_CORS_ORIGINS` to your frontend domain |
+| JWT verification fails | Issuer mismatch | Ensure `AUTHPLEX_ISSUER` matches the `iss` claim clients expect |
+| Sessions lost on restart | No Redis configured | Set `AUTHPLEX_REDIS_URL` for persistent sessions |
 | "no active key pair" | Keys not provisioned | Create a tenant — keys are auto-provisioned on first use |
 | Migrations fail | Database permissions | Ensure DB user has CREATE TABLE privileges |
 | Rate limit 429 | Too many requests from same IP | Legitimate traffic: increase limit. Attack: add WAF/firewall |
-| Email OTP not received | SMTP not configured | Set `AUTHCORE_SMTP_*` variables, or check console logs for OTP code (dev mode) |
+| Email OTP not received | SMTP not configured | Set `AUTHPLEX_SMTP_*` variables, or check console logs for OTP code (dev mode) |
 
 ### Useful Debug Commands
 
 ```bash
-# Check AuthCore logs
-docker logs authcore --tail 100 -f
+# Check AuthPlex logs
+docker logs authplex --tail 100 -f
 
 # Check database connectivity
-psql $AUTHCORE_DATABASE_DSN -c "SELECT 1"
+psql $AUTHPLEX_DATABASE_DSN -c "SELECT 1"
 
 # Check Redis connectivity
-redis-cli -u $AUTHCORE_REDIS_URL ping
+redis-cli -u $AUTHPLEX_REDIS_URL ping
 
 # Check migrations status
-psql $AUTHCORE_DATABASE_DSN -c "SELECT * FROM schema_migrations ORDER BY id"
+psql $AUTHPLEX_DATABASE_DSN -c "SELECT * FROM schema_migrations ORDER BY id"
 
 # Count users
-psql $AUTHCORE_DATABASE_DSN -c "SELECT tenant_id, COUNT(*) FROM users GROUP BY tenant_id"
+psql $AUTHPLEX_DATABASE_DSN -c "SELECT tenant_id, COUNT(*) FROM users GROUP BY tenant_id"
 
 # Recent audit events
-psql $AUTHCORE_DATABASE_DSN -c "SELECT action, actor_id, timestamp FROM audit_events ORDER BY timestamp DESC LIMIT 10"
+psql $AUTHPLEX_DATABASE_DSN -c "SELECT action, actor_id, timestamp FROM audit_events ORDER BY timestamp DESC LIMIT 10"
 ```

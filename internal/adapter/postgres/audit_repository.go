@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/authcore/internal/domain/audit"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/audit"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // AuditRepository implements audit.Repository using PostgreSQL.

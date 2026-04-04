@@ -6,10 +6,10 @@ import (
 	"encoding/base64"
 	"log/slog"
 
-	auditsvc "github.com/authcore/internal/application/audit"
-	domainaudit "github.com/authcore/internal/domain/audit"
-	domainrbac "github.com/authcore/internal/domain/rbac"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	auditsvc "github.com/authplex/internal/application/audit"
+	domainaudit "github.com/authplex/internal/domain/audit"
+	domainrbac "github.com/authplex/internal/domain/rbac"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // Service provides RBAC operations.

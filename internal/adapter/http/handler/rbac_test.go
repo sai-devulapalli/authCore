@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/authcore/internal/adapter/cache"
-	rbacsvc "github.com/authcore/internal/application/rbac"
+	"github.com/authplex/internal/adapter/cache"
+	rbacsvc "github.com/authplex/internal/application/rbac"
 	"github.com/stretchr/testify/assert"
 )
 

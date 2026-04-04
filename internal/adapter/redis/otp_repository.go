@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/authcore/internal/domain/otp"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/otp"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 	goredis "github.com/redis/go-redis/v9"
 )
 

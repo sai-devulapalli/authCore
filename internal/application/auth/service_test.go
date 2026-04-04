@@ -14,11 +14,14 @@ import (
 	"testing"
 	"time"
 
-	adaptcrypto "github.com/authcore/internal/adapter/crypto"
-	"github.com/authcore/internal/application/jwks"
-	"github.com/authcore/internal/domain/jwk"
-	"github.com/authcore/internal/domain/token"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	adaptcrypto "github.com/authplex/internal/adapter/crypto"
+	"github.com/authplex/internal/adapter/cache"
+	"github.com/authplex/internal/application/jwks"
+	"github.com/authplex/internal/domain/client"
+	"github.com/authplex/internal/domain/jwk"
+	"github.com/authplex/internal/domain/token"
+	"github.com/authplex/internal/domain/user"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -779,7 +782,7 @@ func TestIntrospect_ValidJWT(t *testing.T) {
 
 	// Create a properly signed JWT
 	jwt := signTestJWT(t, map[string]any{
-		"iss": "https://authcore",
+		"iss": "https://authplex",
 		"sub": "user-1",
 		"aud": []string{"client-1"},
 		"exp": 9999999999,
@@ -793,7 +796,7 @@ func TestIntrospect_ValidJWT(t *testing.T) {
 	assert.True(t, resp.Active)
 	assert.Equal(t, "user-1", resp.Subject)
 	assert.Equal(t, "client-1", resp.ClientID)
-	assert.Equal(t, "https://authcore", resp.Issuer)
+	assert.Equal(t, "https://authplex", resp.Issuer)
 }
 
 func TestIntrospect_InvalidSignature(t *testing.T) {
@@ -803,7 +806,7 @@ func TestIntrospect_InvalidSignature(t *testing.T) {
 
 	// Construct a JWT with a fake signature (should fail verification)
 	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256","typ":"JWT","kid":"real-kid"}`))
-	payload := base64.RawURLEncoding.EncodeToString([]byte(`{"iss":"https://authcore","sub":"user-1","aud":["client-1"],"exp":9999999999,"iat":1000000000,"jti":"jti-1"}`))
+	payload := base64.RawURLEncoding.EncodeToString([]byte(`{"iss":"https://authplex","sub":"user-1","aud":["client-1"],"exp":9999999999,"iat":1000000000,"jti":"jti-1"}`))
 	fakeJWT := header + "." + payload + ".fakesig"
 
 	resp, appErr := svc.Introspect(context.Background(), IntrospectRequest{Token: fakeJWT})
@@ -819,7 +822,7 @@ func TestIntrospect_ExpiredJWT(t *testing.T) {
 
 	// Create a properly signed JWT that is expired
 	jwt := signTestJWT(t, map[string]any{
-		"iss": "https://authcore",
+		"iss": "https://authplex",
 		"sub": "user-1",
 		"aud": []string{"client-1"},
 		"exp": 1000000000,
@@ -994,4 +997,118 @@ func TestAuthorizeDevice_MissingSubject(t *testing.T) {
 
 	appErr := svc.AuthorizeDevice(context.Background(), AuthorizeDeviceRequest{UserCode: "ABCD-1234"})
 	require.NotNil(t, appErr)
+}
+
+// --- WithXxx fluent method tests ---
+
+func TestAuthSvc_WithUserRepo(t *testing.T) {
+	svc := newTestService(&mockCodeRepo{}, &mockJWKRepo{}, &mockSigner{})
+	result := svc.WithUserRepo(nil)
+	assert.NotNil(t, result)
+}
+
+func TestAuthSvc_WithTenantRepo(t *testing.T) {
+	svc := newTestService(&mockCodeRepo{}, &mockJWKRepo{}, &mockSigner{})
+	result := svc.WithTenantRepo(nil)
+	assert.NotNil(t, result)
+}
+
+func TestAuthSvc_WithRBAC(t *testing.T) {
+	svc := newTestService(&mockCodeRepo{}, &mockJWKRepo{}, &mockSigner{})
+	result := svc.WithRBAC(nil)
+	assert.NotNil(t, result)
+}
+
+func TestAuthSvc_WithAudit(t *testing.T) {
+	svc := newTestService(&mockCodeRepo{}, &mockJWKRepo{}, &mockSigner{})
+	result := svc.WithAudit(nil)
+	assert.NotNil(t, result)
+}
+
+func TestAuthSvc_WithClientRepo(t *testing.T) {
+	svc := newTestService(&mockCodeRepo{}, &mockJWKRepo{}, &mockSigner{})
+	result := svc.WithClientRepo(nil)
+	assert.NotNil(t, result)
+}
+
+func TestIntrospect_WithTokenVersion_UserRevoked(t *testing.T) {
+	kp := generateTestKeyPair(t)
+	jwkRepo := &mockJWKRepoReal{kp: kp}
+	userRepo := cache.NewInMemoryUserRepository()
+	svc := newTestService(&mockCodeRepo{}, jwkRepo, &mockSigner{})
+	svc.WithUserRepo(userRepo)
+
+	// Create user with higher token version
+	u, _ := user.NewUser("user-1", "t1", "a@b.com", "Test")
+	u.TokenVersion = 5
+	userRepo.Create(context.Background(), u) //nolint:errcheck
+
+	// Sign a JWT with lower token version
+	jwt := signTestJWT(t, map[string]any{
+		"iss": "https://authplex",
+		"sub": "user-1",
+		"aud": []string{"t1"},
+		"exp": 9999999999,
+		"iat": 1000000000,
+		"jti": "jti-1",
+		"tv":  2,
+	}, kp)
+
+	resp, appErr := svc.Introspect(context.Background(), IntrospectRequest{Token: jwt})
+	require.Nil(t, appErr)
+	assert.False(t, resp.Active) // Token version is outdated
+}
+
+func TestIntrospect_WithTokenVersion_Active(t *testing.T) {
+	kp := generateTestKeyPair(t)
+	jwkRepo := &mockJWKRepoReal{kp: kp}
+	userRepo := cache.NewInMemoryUserRepository()
+	tenantRepo := cache.NewInMemoryTenantRepository()
+	svc := newTestService(&mockCodeRepo{}, jwkRepo, &mockSigner{})
+	svc.WithUserRepo(userRepo)
+	svc.WithTenantRepo(tenantRepo)
+
+	u, _ := user.NewUser("user-1", "t1", "a@b.com", "Test")
+	u.TokenVersion = 1
+	userRepo.Create(context.Background(), u) //nolint:errcheck
+
+	jwt := signTestJWT(t, map[string]any{
+		"iss": "https://authplex",
+		"sub": "user-1",
+		"aud": []string{"t1"},
+		"exp": 9999999999,
+		"iat": 1000000000,
+		"jti": "jti-2",
+		"tv":  1,
+	}, kp)
+
+	resp, appErr := svc.Introspect(context.Background(), IntrospectRequest{Token: jwt})
+	require.Nil(t, appErr)
+	assert.True(t, resp.Active)
+}
+
+func TestExchangeClientCredentials_WithEndpoints(t *testing.T) {
+	kp := generateTestKeyPair(t)
+	jwkRepo := &mockJWKRepoReal{kp: kp}
+	clientRepo := cache.NewInMemoryClientRepository()
+	ctx := context.Background()
+
+	// Create a client with AllowedEndpoints
+	c, _ := client.NewClient("client-1", "t1", "API Client", client.Confidential,
+		nil, nil, []client.GrantType{client.GrantClientCredentials})
+	c.AllowedEndpoints = []string{"/api/v1/resource"}
+	clientRepo.Create(ctx, c) //nolint:errcheck
+
+	svc := newTestService(&mockCodeRepo{}, jwkRepo, adaptcrypto.NewJWTSigner())
+	svc.WithClientRepo(clientRepo)
+
+	resp, appErr := svc.Exchange(ctx, TokenRequest{
+		GrantType: "client_credentials",
+		ClientID:  "client-1",
+		TenantID:  "t1",
+		Scope:     "api:read",
+	})
+
+	require.Nil(t, appErr)
+	assert.NotEmpty(t, resp.AccessToken)
 }

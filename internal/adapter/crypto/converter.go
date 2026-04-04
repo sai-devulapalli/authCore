@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/authcore/internal/domain/jwk"
+	"github.com/authplex/internal/domain/jwk"
 )
 
 // JWKConverter implements jwk.Converter, transforming PEM public keys to PublicJWK.
