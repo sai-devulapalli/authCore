@@ -7,8 +7,8 @@ import (
 	"encoding/base64"
 	"time"
 
-	"github.com/authcore/internal/domain/token"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/token"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // hashRefreshToken returns a SHA-256 hash of the token for storage.

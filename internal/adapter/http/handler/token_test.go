@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/authcore/internal/domain/token"
+	"github.com/authplex/internal/domain/token"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -123,4 +123,11 @@ func TestTokenHandler_ResponseNotEnveloped(t *testing.T) {
 	assert.False(t, hasData, "response should not be wrapped in data envelope")
 	_, hasAccessToken := raw["access_token"]
 	assert.True(t, hasAccessToken, "response should contain access_token at top level")
+}
+
+func TestTokenHandler_WithClientService(t *testing.T) {
+	svc := newAuthService(&mockAuthCodeRepo{})
+	h := NewTokenHandler(svc)
+	result := h.WithClientService(nil)
+	assert.NotNil(t, result, "WithClientService should return non-nil handler")
 }

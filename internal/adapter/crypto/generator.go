@@ -8,7 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 
-	"github.com/authcore/internal/domain/jwk"
+	"github.com/authplex/internal/domain/jwk"
 )
 
 const rsaKeyBits = 2048

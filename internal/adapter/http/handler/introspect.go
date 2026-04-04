@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"github.com/authcore/internal/application/auth"
-	"github.com/authcore/pkg/sdk/httputil"
+	"github.com/authplex/internal/application/auth"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // IntrospectHandler serves the token introspection endpoint (RFC 7662).

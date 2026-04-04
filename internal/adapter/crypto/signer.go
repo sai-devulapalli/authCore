@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/authcore/internal/domain/token"
+	"github.com/authplex/internal/domain/token"
 )
 
 // JWTSigner implements token.Signer using Go stdlib crypto.

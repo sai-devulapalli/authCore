@@ -1,4 +1,4 @@
-# AuthCore — Comprehensive E2E Test Plan
+# AuthPlex — Comprehensive E2E Test Plan
 
 > **Scope:** All 39 HTTP endpoints, all grant types, all MFA methods, all social providers, RBAC, audit, cleanup, key rotation.
 > **Environment:** Real Postgres + Redis via Docker testcontainers. No mocks.
@@ -11,7 +11,7 @@
 ### 1.1 Discovery Document
 - [ ] `GET /.well-known/openid-configuration` returns valid JSON with all required fields
 - [ ] Discovery includes `authorization_endpoint`, `token_endpoint`, `jwks_uri`, `userinfo_endpoint`
-- [ ] Discovery `issuer` matches configured `AUTHCORE_ISSUER`
+- [ ] Discovery `issuer` matches configured `AUTHPLEX_ISSUER`
 - [ ] Discovery `grant_types_supported` includes all 5 grant types
 - [ ] Discovery `response_types_supported` includes `code`
 - [ ] Discovery `subject_types_supported` includes `public`
@@ -203,7 +203,7 @@
 
 ### 11.1 OAuth Flow
 - [ ] `GET /authorize?provider=google` redirects to Google auth URL with correct params
-- [ ] `GET /callback` with valid state + code exchanges tokens and issues AuthCore code
+- [ ] `GET /callback` with valid state + code exchanges tokens and issues AuthPlex code
 - [ ] Callback with invalid state returns 400
 - [ ] Callback with expired state returns 400
 - [ ] State is consumed (replay protection) — reusing state returns 400
@@ -394,7 +394,7 @@
 - [ ] Management endpoints with wrong API key return 401
 - [ ] `Authorization: Bearer <key>` header accepted
 - [ ] `X-API-Key: <key>` header accepted
-- [ ] When `AUTHCORE_ADMIN_API_KEY` is empty (dev mode), auth is skipped
+- [ ] When `AUTHPLEX_ADMIN_API_KEY` is empty (dev mode), auth is skipped
 - [ ] Constant-time comparison (timing attack protection — verify no early return)
 
 ---
@@ -414,7 +414,7 @@
 ## 20. CORS
 
 - [ ] Preflight `OPTIONS` request returns correct CORS headers
-- [ ] `Access-Control-Allow-Origin` matches configured `AUTHCORE_CORS_ORIGINS`
+- [ ] `Access-Control-Allow-Origin` matches configured `AUTHPLEX_CORS_ORIGINS`
 - [ ] `Access-Control-Allow-Methods` includes GET, POST, PUT, DELETE, OPTIONS
 - [ ] `Access-Control-Allow-Headers` includes Content-Type, Authorization, X-Tenant-ID, X-API-Key
 - [ ] Wildcard `*` origin works in dev mode
@@ -424,7 +424,7 @@
 
 ## 21. Encryption at Rest
 
-- [ ] When `AUTHCORE_ENCRYPTION_KEY` is set, sensitive fields are encrypted in storage
+- [ ] When `AUTHPLEX_ENCRYPTION_KEY` is set, sensitive fields are encrypted in storage
 - [ ] Data is decrypted correctly when retrieved
 - [ ] Without encryption key, data is stored in plaintext
 - [ ] Wrong encryption key fails to decrypt (graceful error)
@@ -440,7 +440,7 @@
 - [ ] Cleanup runs on startup and every 24 hours
 
 ### 22.2 Key Auto-Rotation
-- [ ] Keys older than `AUTHCORE_KEY_ROTATION_DAYS` (default 90) are rotated
+- [ ] Keys older than `AUTHPLEX_KEY_ROTATION_DAYS` (default 90) are rotated
 - [ ] Rotated key is deactivated but kept for verification during grace period
 - [ ] New key is generated and becomes active
 - [ ] JWKS serves both old and new keys during grace period
@@ -475,9 +475,9 @@
 
 ---
 
-## 26. Go SDK (pkg/authcore)
+## 26. Go SDK (pkg/authplex)
 
-- [ ] `authcore.New()` creates embeddable AuthCore instance
+- [ ] `authplex.New()` creates embeddable AuthPlex instance
 - [ ] `Register()` creates a user
 - [ ] `Login()` returns session
 - [ ] `IssueTokens()` generates access + ID tokens
@@ -523,7 +523,7 @@
 1. Create tenant
 2. Create identity provider (mock provider for E2E)
 3. Authorize with provider param → redirect to provider
-4. Callback with code → identity linked + AuthCore code issued
+4. Callback with code → identity linked + AuthPlex code issued
 5. Exchange code → tokens with social user's claims
 ```
 

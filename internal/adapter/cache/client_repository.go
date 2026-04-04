@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/authcore/internal/domain/client"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/client"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // InMemoryClientRepository implements client.Repository using an in-memory map.

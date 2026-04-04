@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	domainotp "github.com/authcore/internal/domain/otp"
-	domainuser "github.com/authcore/internal/domain/user"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	domainotp "github.com/authplex/internal/domain/otp"
+	domainuser "github.com/authplex/internal/domain/user"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -80,6 +80,24 @@ func (m *mockUserRepo) IncrementTokenVersion(_ context.Context, id, _ string) er
 	u.TokenVersion++
 	m.users[id] = u
 	return nil
+}
+
+func (m *mockUserRepo) ListByTenant(_ context.Context, tenantID string, offset, limit int) ([]domainuser.User, int, error) {
+	var result []domainuser.User
+	for _, u := range m.users {
+		if u.TenantID == tenantID {
+			result = append(result, u)
+		}
+	}
+	total := len(result)
+	if offset >= total {
+		return []domainuser.User{}, total, nil
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	return result[offset:end], total, nil
 }
 
 type mockSessionRepo struct {
@@ -633,4 +651,124 @@ func TestResetPassword_MissingPassword(t *testing.T) {
 
 	require.NotNil(t, appErr)
 	assert.Equal(t, apperrors.ErrBadRequest, appErr.Code)
+}
+
+// --- ListUsers Tests ---
+
+func TestUserSvc_ListUsers(t *testing.T) {
+	repo := newMockUserRepo()
+	svc := NewService(repo, newMockSessionRepo(), &mockHasher{}, slog.Default())
+
+	_, appErr := svc.Register(context.Background(), RegisterRequest{
+		Email: "list@example.com", Password: "pass123", Name: "List User", TenantID: "t1",
+	})
+	require.Nil(t, appErr)
+
+	summaries, total, appErr := svc.ListUsers(context.Background(), "t1", 0, 10)
+
+	require.Nil(t, appErr)
+	assert.GreaterOrEqual(t, total, 1)
+	assert.GreaterOrEqual(t, len(summaries), 1)
+
+	found := false
+	for _, s := range summaries {
+		if s.Email == "list@example.com" {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "registered email should appear in list")
+}
+
+func TestUserSvc_ListUsers_EmptyTenant(t *testing.T) {
+	svc := NewService(newMockUserRepo(), newMockSessionRepo(), &mockHasher{}, slog.Default())
+
+	_, _, appErr := svc.ListUsers(context.Background(), "", 0, 10)
+
+	require.NotNil(t, appErr)
+	assert.Equal(t, apperrors.ErrBadRequest, appErr.Code)
+}
+
+func TestUserSvc_ListUsers_DefaultLimit(t *testing.T) {
+	svc := NewService(newMockUserRepo(), newMockSessionRepo(), &mockHasher{}, slog.Default())
+
+	_, _, appErr := svc.ListUsers(context.Background(), "t1", 0, -1)
+
+	assert.Nil(t, appErr)
+}
+
+func TestUserSvc_WithAudit(t *testing.T) {
+	svc := NewService(newMockUserRepo(), newMockSessionRepo(), &mockHasher{}, slog.Default())
+	result := svc.WithAudit(nil)
+	assert.NotNil(t, result)
+}
+
+func TestRequestOTP_Phone_Success(t *testing.T) {
+	repo := newMockUserRepo()
+	// User with phone number
+	u, _ := domainuser.NewUser("u2", "t1", "user2@example.com", "User 2")
+	u.Phone = "+1234567890"
+	repo.users["u2"] = u
+
+	otpRepo := newMockOTPRepo()
+	smsSender := &mockSMSSender{}
+	emailSender := &mockEmailSender{}
+	svc := NewService(repo, newMockSessionRepo(), &mockHasher{}, slog.Default()).
+		WithOTP(otpRepo, emailSender, smsSender)
+
+	resp, appErr := svc.RequestOTP(context.Background(), RequestOTPRequest{
+		Phone: "+1234567890", Purpose: "login", TenantID: "t1",
+	})
+
+	require.Nil(t, appErr)
+	assert.Equal(t, "OTP sent", resp.Message)
+}
+
+func TestRequestOTP_Phone_UserNotFound(t *testing.T) {
+	svc, _, _ := newOTPService()
+
+	_, appErr := svc.RequestOTP(context.Background(), RequestOTPRequest{
+		Phone: "+9999999999", Purpose: "login", TenantID: "t1",
+	})
+
+	require.NotNil(t, appErr)
+}
+
+func TestRequestOTP_Phone_Verify_NoUserRequired(t *testing.T) {
+	repo := newMockUserRepo()
+	otpRepo := newMockOTPRepo()
+	smsSender := &mockSMSSender{}
+	svc := NewService(repo, newMockSessionRepo(), &mockHasher{}, slog.Default()).
+		WithOTP(otpRepo, &mockEmailSender{}, smsSender)
+
+	// For "verify" purpose, phone user doesn't need to exist
+	resp, appErr := svc.RequestOTP(context.Background(), RequestOTPRequest{
+		Phone: "+1234567890", Purpose: "verify", TenantID: "t1",
+	})
+
+	require.Nil(t, appErr)
+	assert.Equal(t, "OTP sent", resp.Message)
+}
+
+func TestResetPassword_PhoneUser(t *testing.T) {
+	svc, otpRepo, _ := newOTPService()
+
+	// Store reset OTP for phone
+	otpRepo.otps["t1:+1234567890"] = domainotp.OTP{
+		Identifier: "+1234567890",
+		Code:       "123456",
+		Purpose:    "reset",
+		TenantID:   "t1",
+		ExpiresAt:  time.Now().UTC().Add(5 * time.Minute),
+	}
+
+	// Should fail because user doesn't exist with that phone
+	appErr := svc.ResetPassword(context.Background(), ResetPasswordRequest{
+		Phone:       "+1234567890",
+		Code:        "123456",
+		NewPassword: "newpass123",
+		TenantID:    "t1",
+	})
+
+	require.NotNil(t, appErr) // no user with that phone in default test setup
 }

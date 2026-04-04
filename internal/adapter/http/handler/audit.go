@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	auditsvc "github.com/authcore/internal/application/audit"
-	domainaudit "github.com/authcore/internal/domain/audit"
-	"github.com/authcore/pkg/sdk/httputil"
+	auditsvc "github.com/authplex/internal/application/audit"
+	domainaudit "github.com/authplex/internal/domain/audit"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // AuditHandler serves audit log query endpoints.

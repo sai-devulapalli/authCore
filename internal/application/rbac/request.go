@@ -1,6 +1,6 @@
 package rbac
 
-import "github.com/authcore/internal/domain/rbac"
+import "github.com/authplex/internal/domain/rbac"
 
 // CreateRoleRequest is the DTO for creating a role.
 type CreateRoleRequest struct {

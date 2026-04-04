@@ -16,15 +16,15 @@ import (
 	"strings"
 	"time"
 
-	auditsvc "github.com/authcore/internal/application/audit"
-	"github.com/authcore/internal/application/jwks"
-	domainaudit "github.com/authcore/internal/domain/audit"
-	"github.com/authcore/internal/domain/client"
-	"github.com/authcore/internal/domain/rbac"
-	"github.com/authcore/internal/domain/tenant"
-	"github.com/authcore/internal/domain/token"
-	"github.com/authcore/internal/domain/user"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	auditsvc "github.com/authplex/internal/application/audit"
+	"github.com/authplex/internal/application/jwks"
+	domainaudit "github.com/authplex/internal/domain/audit"
+	"github.com/authplex/internal/domain/client"
+	"github.com/authplex/internal/domain/rbac"
+	"github.com/authplex/internal/domain/tenant"
+	"github.com/authplex/internal/domain/token"
+	"github.com/authplex/internal/domain/user"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // Service provides OAuth 2.0 token operations for all grant types.
@@ -554,7 +554,7 @@ func (s *Service) issueTokensWithEndpoints(ctx context.Context, subject, clientI
 		}
 
 		accessClaims := token.Claims{
-			Issuer:       "https://authcore",
+			Issuer:       "https://authplex",
 			Subject:      subject,
 			Audience:     []string{clientID},
 			TenantID:     tenantID,
@@ -616,7 +616,7 @@ func (s *Service) issueTokens(ctx context.Context, subject, clientID, tenantID, 
 	}
 
 	accessClaims := token.Claims{
-		Issuer:       "https://authcore",
+		Issuer:       "https://authplex",
 		Subject:      subject,
 		Audience:     []string{clientID},
 		TenantID:     tenantID,
@@ -634,7 +634,7 @@ func (s *Service) issueTokens(ctx context.Context, subject, clientID, tenantID, 
 	}
 
 	idClaims := token.Claims{
-		Issuer:       "https://authcore",
+		Issuer:       "https://authplex",
 		Subject:      subject,
 		Audience:     []string{clientID},
 		TenantID:     tenantID,

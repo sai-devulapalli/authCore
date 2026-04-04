@@ -1,4 +1,4 @@
-# AuthCore — Product Roadmap
+# AuthPlex — Product Roadmap
 
 > **Last updated:** 2026-03-31
 > **Current state:** ~273 files | 812 tests | 141 E2E + 30 Playwright | 80%+ coverage | 49 endpoints | 47 packages | 19 migrations
@@ -108,7 +108,7 @@ CREATE POLICY tenant_isolation_users ON users
 |-----------|--------|
 | `middleware/ratelimit.go` | Refactor for multi-tier support |
 | `adapter/redis/ratelimit.go` | New — Redis `INCR` + `EXPIRE` for distributed limiting |
-| `config/config.go` | Add `AUTHCORE_RATE_LIMIT_*` env vars |
+| `config/config.go` | Add `AUTHPLEX_RATE_LIMIT_*` env vars |
 | Response | HTTP 429 with `Retry-After` header |
 
 **Fallback:** Redis unavailable → in-memory (current behavior).
@@ -133,7 +133,7 @@ CREATE POLICY tenant_isolation_users ON users
 **Auth flow:**
 ```
 1. Bootstrap: POST /admin/bootstrap { email, password }
-   (only works if no admins exist, uses AUTHCORE_ADMIN_API_KEY as bootstrap secret)
+   (only works if no admins exist, uses AUTHPLEX_ADMIN_API_KEY as bootstrap secret)
 
 2. Login: POST /admin/login { email, password } → admin JWT (1h)
    Claims: { sub, role, tenant_ids, permissions, exp }
@@ -159,7 +159,7 @@ CREATE POLICY tenant_isolation_users ON users
 
 ### 2.1 SAML 2.0
 
-**Problem:** Enterprise customers require SAML SSO. Without it, AuthCore is rejected by Okta/Azure AD shops.
+**Problem:** Enterprise customers require SAML SSO. Without it, AuthPlex is rejected by Okta/Azure AD shops.
 
 **Dependency:** `github.com/crewjam/saml`
 
@@ -207,7 +207,7 @@ Admin configures IdP → User clicks SSO → Redirect to IdP
 
 ### 2.3 Admin UI
 
-**Status:** Separate repo `authcore-admin` created. Dashboard, Tenant/Client/Provider/Role CRUD, Audit viewer done.
+**Status:** Separate repo `authplex-admin` created. Dashboard, Tenant/Client/Provider/Role CRUD, Audit viewer done.
 
 **Remaining:** User management page, SAML config form, SCIM status view, webhook management, CI/CD deployment.
 

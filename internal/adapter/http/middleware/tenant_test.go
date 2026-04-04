@@ -8,10 +8,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	tenantsvc "github.com/authcore/internal/application/tenant"
-	"github.com/authcore/internal/config"
-	"github.com/authcore/internal/domain/shared"
-	"github.com/authcore/internal/domain/tenant"
+	tenantsvc "github.com/authplex/internal/application/tenant"
+	"github.com/authplex/internal/config"
+	"github.com/authplex/internal/domain/shared"
+	"github.com/authplex/internal/domain/tenant"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

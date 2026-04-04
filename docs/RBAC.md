@@ -1,8 +1,8 @@
-# AuthCore — Role-Based Access Control (RBAC)
+# AuthPlex — Role-Based Access Control (RBAC)
 
 ## Overview
 
-RBAC in AuthCore allows you to define roles and permissions per tenant, assign them to users, and include them in JWT claims. Your APIs then check these claims to authorize actions — no call back to AuthCore needed.
+RBAC in AuthPlex allows you to define roles and permissions per tenant, assign them to users, and include them in JWT claims. Your APIs then check these claims to authorize actions — no call back to AuthPlex needed.
 
 ```
 WITHOUT RBAC:    JWT = {sub: "alice"}         → Your API knows WHO, not what they CAN DO
@@ -18,7 +18,7 @@ WITH RBAC:       JWT = {sub: "alice",
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│                      AuthCore                           │
+│                      AuthPlex                           │
 │                                                          │
 │  Tenant: my-tenant                                       │
 │  ┌─────────────────────────────────────────────┐        │
@@ -55,7 +55,7 @@ WITH RBAC:       JWT = {sub: "alice",
 │  DELETE /api/posts/123  → check "posts:delete"   → ✅   │
 │  GET /api/settings      → check "settings:read"  → ✅   │
 │                                                          │
-│  No call back to AuthCore — JWT is self-contained       │
+│  No call back to AuthPlex — JWT is self-contained       │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -166,7 +166,7 @@ curl http://localhost:8080/tenants/my-tenant/users/alice-id/permissions \
 
 ```json
 {
-  "iss": "https://authcore",
+  "iss": "https://authplex",
   "sub": "alice-id",
   "aud": ["my-app"],
   "exp": 1774646411,
@@ -179,7 +179,7 @@ curl http://localhost:8080/tenants/my-tenant/users/alice-id/permissions \
 
 ```json
 {
-  "iss": "https://authcore",
+  "iss": "https://authplex",
   "sub": "alice-id",
   "aud": ["my-app"],
   "exp": 1774646411,
@@ -205,7 +205,7 @@ curl http://localhost:8080/tenants/my-tenant/users/alice-id/permissions \
 func RequirePermission(permission string) func(http.Handler) http.Handler {
     return func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            claims := authcore.ClaimsFromContext(r.Context())
+            claims := authplex.ClaimsFromContext(r.Context())
             if !HasPermission(claims.Permissions, permission) {
                 http.Error(w, `{"error":"forbidden"}`, 403)
                 return
@@ -438,13 +438,13 @@ The delay = JWT expiry time (1 hour max).
 |--------|-----|-----------|
 | Short JWT TTL | Set access_token to 5 minutes | More refresh calls |
 | Token blacklist | Revoke old JWT on role change | Requires blacklist check on every request |
-| Hybrid | Check roles in JWT + verify critical actions against AuthCore API | Extra network call for sensitive operations only |
+| Hybrid | Check roles in JWT + verify critical actions against AuthPlex API | Extra network call for sensitive operations only |
 
 ---
 
-## Comparison: AuthCore RBAC vs Others
+## Comparison: AuthPlex RBAC vs Others
 
-| Feature | **AuthCore** | **Keycloak** | **Cognito** |
+| Feature | **AuthPlex** | **Keycloak** | **Cognito** |
 |---------|:-:|:-:|:-:|
 | Role CRUD API | Yes | Yes + admin UI | Groups API |
 | Per-tenant roles | Yes | Per-realm | Per-pool |
@@ -471,5 +471,5 @@ The delay = JWT expiry time (1 hour max).
 | HTTP handlers (role + assignment endpoints) | **Done** — `internal/adapter/http/handler/rbac.go` |
 | JWT claims extension | **Done** — Auth service enriches JWT with roles + permissions |
 | Permission checking helpers | **Done** — `HasPermission()`, `FlattenPermissions()` in domain |
-| Go SDK integration | **Done** — `AssignRole()` in pkg/authcore |
+| Go SDK integration | **Done** — `AssignRole()` in pkg/authplex |
 | Wrapper SDKs | **Done** — Java, .NET, Node.js, Python all include RBAC methods |

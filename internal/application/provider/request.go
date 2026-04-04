@@ -1,6 +1,6 @@
 package provider
 
-import "github.com/authcore/internal/domain/identity"
+import "github.com/authplex/internal/domain/identity"
 
 // CreateProviderRequest is the DTO for creating an identity provider.
 type CreateProviderRequest struct {

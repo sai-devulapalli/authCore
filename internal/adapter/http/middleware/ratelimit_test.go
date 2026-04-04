@@ -145,3 +145,9 @@ func TestRateLimiter_PurgeExpired(t *testing.T) {
 	rl.mu.Unlock()
 	assert.Equal(t, 0, count)
 }
+
+func TestRateLimiter_Stop(t *testing.T) {
+	rl := NewRateLimiter(10, time.Minute)
+	// Stop should not panic and should close the done channel
+	rl.Stop()
+}

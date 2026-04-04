@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	usersvc "github.com/authcore/internal/application/user"
-	domainotp "github.com/authcore/internal/domain/otp"
-	domainuser "github.com/authcore/internal/domain/user"
+	usersvc "github.com/authplex/internal/application/user"
+	domainotp "github.com/authplex/internal/domain/otp"
+	domainuser "github.com/authplex/internal/domain/user"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -66,6 +66,14 @@ func (m *mockUserHandlerRepo) Delete(_ context.Context, id, _ string) error {
 
 func (m *mockUserHandlerRepo) IncrementTokenVersion(_ context.Context, _, _ string) error {
 	return nil
+}
+
+func (m *mockUserHandlerRepo) ListByTenant(_ context.Context, _ string, _, _ int) ([]domainuser.User, int, error) {
+	var users []domainuser.User
+	for _, u := range m.users {
+		users = append(users, u)
+	}
+	return users, len(users), nil
 }
 
 type mockUserSessionRepo struct {
@@ -401,4 +409,45 @@ func TestExtractSessionToken_Empty(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	assert.Empty(t, extractSessionToken(req))
+}
+
+func TestUserHandler_HandleListUsers_Success(t *testing.T) {
+	userRepo := newMockUserHandlerRepo()
+	u, _ := domainuser.NewUser("u1", "t1", "user@example.com", "Test User")
+	u.PasswordHash = []byte("hash")
+	userRepo.users["u1"] = u
+
+	svc := usersvc.NewService(userRepo, newMockUserSessionRepo(), &mockUserHasher{}, slog.Default())
+	h := NewUserHandler(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/tenants/t1/users", nil)
+	w := httptest.NewRecorder()
+
+	h.HandleListUsers(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "users")
+	assert.Contains(t, w.Body.String(), "count")
+}
+
+func TestUserHandler_HandleListUsers_MissingTenant(t *testing.T) {
+	h := newUserHandler()
+
+	req := httptest.NewRequest(http.MethodGet, "/users", nil)
+	w := httptest.NewRecorder()
+
+	h.HandleListUsers(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestUserHandler_HandleListUsers_MethodNotAllowed(t *testing.T) {
+	h := newUserHandler()
+
+	req := httptest.NewRequest(http.MethodPost, "/tenants/t1/users", nil)
+	w := httptest.NewRecorder()
+
+	h.HandleListUsers(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

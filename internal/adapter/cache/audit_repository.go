@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/authcore/internal/domain/audit"
+	"github.com/authplex/internal/domain/audit"
 )
 
 // InMemoryAuditRepository implements audit.Repository.

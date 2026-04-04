@@ -1,4 +1,4 @@
-# AuthCore — Use Cases & Integration Guide
+# AuthPlex — Use Cases & Integration Guide
 
 ## Use Cases
 
@@ -20,7 +20,7 @@ Customer A (tenant-a)          Customer B (tenant-b)
 **Setup**:
 ```bash
 # Create tenant for Customer A
-curl -X POST http://authcore:8080/tenants \
+curl -X POST http://authplex:8080/tenants \
   -H "X-API-Key: admin-key" \
   -d '{"id":"tenant-a","domain":"a.example.com","issuer":"https://a.example.com","algorithm":"RS256"}'
 
@@ -28,7 +28,7 @@ curl -X POST http://authcore:8080/tenants \
 # (Update tenant with MFA policy via direct DB or future API)
 
 # Register OAuth client for their dashboard
-curl -X POST http://authcore:8080/tenants/tenant-a/clients \
+curl -X POST http://authplex:8080/tenants/tenant-a/clients \
   -d '{"client_name":"Dashboard","client_type":"public","redirect_uris":["https://dashboard.a.example.com/callback"],"allowed_scopes":["openid","profile"],"grant_types":["authorization_code","refresh_token"]}'
 ```
 
@@ -171,7 +171,7 @@ curl -X POST .../tenants/my-tenant/providers \
 # 2. Frontend redirects to:
 # https://auth.myapp.com/authorize?provider=google&client_id=my-app&redirect_uri=...&scope=openid&code_challenge=...
 
-# 3. User authenticates with Google → AuthCore handles callback → issues AuthCore tokens
+# 3. User authenticates with Google → AuthPlex handles callback → issues AuthPlex tokens
 ```
 
 ---
@@ -199,11 +199,11 @@ curl -X POST .../otp/verify -H "X-Tenant-ID: t1" \
 
 ## Integration Patterns
 
-### Pattern A: AuthCore as Auth Gateway
+### Pattern A: AuthPlex as Auth Gateway
 
 ```
 ┌─────────┐     ┌──────────┐     ┌──────────┐
-│ Frontend │────►│ AuthCore │     │ Your API │
+│ Frontend │────►│ AuthPlex │     │ Your API │
 │  (SPA)   │◄───│          │     │          │
 └─────────┘     └──────────┘     └──────────┘
       │                                │
@@ -213,16 +213,16 @@ curl -X POST .../otp/verify -H "X-Tenant-ID: t1" \
                               Verify JWT via /jwks
 ```
 
-Frontend talks to AuthCore for auth, then calls your API with JWT. Your API verifies JWT using AuthCore's JWKS endpoint.
+Frontend talks to AuthPlex for auth, then calls your API with JWT. Your API verifies JWT using AuthPlex's JWKS endpoint.
 
-### Pattern B: AuthCore as Sidecar
+### Pattern B: AuthPlex as Sidecar
 
 ```
 ┌────────────────────────────────────┐
 │          Kubernetes Pod             │
 │                                     │
 │  ┌──────────┐    ┌──────────────┐  │
-│  │ AuthCore │◄──►│ Your Service │  │
+│  │ AuthPlex │◄──►│ Your Service │  │
 │  │ (sidecar)│    │              │  │
 │  │ :8080    │    │  :3000       │  │
 │  └──────────┘    └──────────────┘  │
@@ -230,7 +230,7 @@ Frontend talks to AuthCore for auth, then calls your API with JWT. Your API veri
 └────────────────────────────────────┘
 ```
 
-AuthCore runs alongside your service in the same pod. Inter-service communication is localhost. ~15MB image, <300MB RAM.
+AuthPlex runs alongside your service in the same pod. Inter-service communication is localhost. ~15MB image, <300MB RAM.
 
 ### Pattern C: Centralized Auth Service
 
@@ -238,7 +238,7 @@ AuthCore runs alongside your service in the same pod. Inter-service communicatio
 ┌─────────┐
 │ App A   │──┐
 └─────────┘  │     ┌──────────┐
-             ├────►│ AuthCore │
+             ├────►│ AuthPlex │
 ┌─────────┐  │     │ (shared) │
 │ App B   │──┤     └──────────┘
 └─────────┘  │
@@ -248,7 +248,7 @@ AuthCore runs alongside your service in the same pod. Inter-service communicatio
 └─────────┘
 ```
 
-Single AuthCore instance serves multiple applications within the same tenant. Each app is a registered client with its own redirect URIs and scopes.
+Single AuthPlex instance serves multiple applications within the same tenant. Each app is a registered client with its own redirect URIs and scopes.
 
 ---
 
@@ -319,7 +319,7 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 ```bash
 # No external dependencies needed
-AUTHCORE_ENV=local ./bin/authcore
+AUTHPLEX_ENV=local ./bin/authplex
 
 # Everything in-memory, OTPs logged to console
 # Perfect for frontend development
@@ -328,34 +328,34 @@ AUTHCORE_ENV=local ./bin/authcore
 ### Staging
 
 ```bash
-AUTHCORE_ENV=staging \
-AUTHCORE_DATABASE_DSN="postgres://user:pass@db:5432/authcore" \
-AUTHCORE_REDIS_URL="redis://redis:6379" \
-AUTHCORE_CORS_ORIGINS="https://staging.myapp.com" \
-AUTHCORE_ADMIN_API_KEY="staging-admin-key" \
-AUTHCORE_SMTP_HOST="smtp.sendgrid.net" \
-AUTHCORE_SMTP_PORT=587 \
-AUTHCORE_SMTP_USERNAME="apikey" \
-AUTHCORE_SMTP_PASSWORD="SG.xxx" \
-AUTHCORE_SMTP_FROM="noreply@myapp.com" \
-./bin/authcore
+AUTHPLEX_ENV=staging \
+AUTHPLEX_DATABASE_DSN="postgres://user:pass@db:5432/authplex" \
+AUTHPLEX_REDIS_URL="redis://redis:6379" \
+AUTHPLEX_CORS_ORIGINS="https://staging.myapp.com" \
+AUTHPLEX_ADMIN_API_KEY="staging-admin-key" \
+AUTHPLEX_SMTP_HOST="smtp.sendgrid.net" \
+AUTHPLEX_SMTP_PORT=587 \
+AUTHPLEX_SMTP_USERNAME="apikey" \
+AUTHPLEX_SMTP_PASSWORD="SG.xxx" \
+AUTHPLEX_SMTP_FROM="noreply@myapp.com" \
+./bin/authplex
 ```
 
 ### Production
 
 ```bash
-AUTHCORE_ENV=production \
-AUTHCORE_DATABASE_DSN="postgres://user:pass@rds-endpoint:5432/authcore?sslmode=require" \
-AUTHCORE_REDIS_URL="redis://elasticache-endpoint:6379" \
-AUTHCORE_CORS_ORIGINS="https://myapp.com,https://admin.myapp.com" \
-AUTHCORE_ADMIN_API_KEY="$(vault read -field=key secret/authcore/admin)" \
-AUTHCORE_ENCRYPTION_KEY="$(vault read -field=key secret/authcore/encryption)" \
-AUTHCORE_SMTP_HOST="smtp.sendgrid.net" \
-AUTHCORE_SMS_PROVIDER="twilio" \
-AUTHCORE_SMS_ACCOUNT_ID="AC123" \
-AUTHCORE_SMS_AUTH_TOKEN="$(vault read -field=token secret/authcore/twilio)" \
-AUTHCORE_SMS_FROM_NUMBER="+15551234567" \
-./bin/authcore
+AUTHPLEX_ENV=production \
+AUTHPLEX_DATABASE_DSN="postgres://user:pass@rds-endpoint:5432/authplex?sslmode=require" \
+AUTHPLEX_REDIS_URL="redis://elasticache-endpoint:6379" \
+AUTHPLEX_CORS_ORIGINS="https://myapp.com,https://admin.myapp.com" \
+AUTHPLEX_ADMIN_API_KEY="$(vault read -field=key secret/authplex/admin)" \
+AUTHPLEX_ENCRYPTION_KEY="$(vault read -field=key secret/authplex/encryption)" \
+AUTHPLEX_SMTP_HOST="smtp.sendgrid.net" \
+AUTHPLEX_SMS_PROVIDER="twilio" \
+AUTHPLEX_SMS_ACCOUNT_ID="AC123" \
+AUTHPLEX_SMS_AUTH_TOKEN="$(vault read -field=token secret/authplex/twilio)" \
+AUTHPLEX_SMS_FROM_NUMBER="+15551234567" \
+./bin/authplex
 ```
 
 ### Docker Compose (Full Stack)
@@ -363,14 +363,14 @@ AUTHCORE_SMS_FROM_NUMBER="+15551234567" \
 ```yaml
 version: '3.8'
 services:
-  authcore:
-    image: authcore:latest
+  authplex:
+    image: authplex:latest
     ports: ["8080:8080"]
     environment:
-      AUTHCORE_ENV: staging
-      AUTHCORE_DATABASE_DSN: postgres://authcore:authcore_dev@postgres:5432/authcore?sslmode=disable
-      AUTHCORE_REDIS_URL: redis://redis:6379
-      AUTHCORE_ADMIN_API_KEY: dev-admin-key
+      AUTHPLEX_ENV: staging
+      AUTHPLEX_DATABASE_DSN: postgres://authplex:authplex_dev@postgres:5432/authplex?sslmode=disable
+      AUTHPLEX_REDIS_URL: redis://redis:6379
+      AUTHPLEX_ADMIN_API_KEY: dev-admin-key
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
@@ -378,11 +378,11 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: authcore
-      POSTGRES_PASSWORD: authcore_dev
-      POSTGRES_DB: authcore
+      POSTGRES_USER: authplex
+      POSTGRES_PASSWORD: authplex_dev
+      POSTGRES_DB: authplex
     healthcheck:
-      test: pg_isready -U authcore
+      test: pg_isready -U authplex
 
   redis:
     image: redis:7-alpine

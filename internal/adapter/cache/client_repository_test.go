@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/authcore/internal/domain/client"
+	"github.com/authplex/internal/domain/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -81,4 +81,50 @@ func TestClientRepo_List(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, total)
 	assert.Len(t, clients, 2)
+}
+
+func TestClientRepo_UpdateAPIKey(t *testing.T) {
+	repo := NewInMemoryClientRepository()
+	ctx := context.Background()
+	c, _ := client.NewClient("c1", "t1", "App", client.Public, nil, nil, nil)
+	require.NoError(t, repo.Create(ctx, c))
+
+	hash := []byte{1, 2, 3}
+	require.NoError(t, repo.UpdateAPIKey(ctx, "c1", "t1", hash))
+
+	got, err := repo.GetByID(ctx, "c1", "t1")
+	require.NoError(t, err)
+	assert.Equal(t, hash, got.APIKeyHash)
+}
+
+func TestClientRepo_UpdateAPIKey_NotFound(t *testing.T) {
+	repo := NewInMemoryClientRepository()
+	err := repo.UpdateAPIKey(context.Background(), "nonexistent", "t1", []byte{1, 2, 3})
+	require.Error(t, err)
+}
+
+func TestClientRepo_GetByAPIKeyHash(t *testing.T) {
+	repo := NewInMemoryClientRepository()
+	ctx := context.Background()
+	c, _ := client.NewClient("c1", "t1", "App", client.Public, nil, nil, nil)
+	require.NoError(t, repo.Create(ctx, c))
+
+	hash := []byte{1, 2, 3}
+	require.NoError(t, repo.UpdateAPIKey(ctx, "c1", "t1", hash))
+
+	got, err := repo.GetByAPIKeyHash(ctx, hash, "t1")
+	require.NoError(t, err)
+	assert.Equal(t, "c1", got.ID)
+}
+
+func TestClientRepo_GetByAPIKeyHash_NotFound(t *testing.T) {
+	repo := NewInMemoryClientRepository()
+	ctx := context.Background()
+	c, _ := client.NewClient("c1", "t1", "App", client.Public, nil, nil, nil)
+	require.NoError(t, repo.Create(ctx, c))
+
+	require.NoError(t, repo.UpdateAPIKey(ctx, "c1", "t1", []byte{1, 2, 3}))
+
+	_, err := repo.GetByAPIKeyHash(ctx, []byte{9, 9, 9}, "t1")
+	require.Error(t, err)
 }

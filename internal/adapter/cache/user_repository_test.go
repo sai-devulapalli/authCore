@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/authcore/internal/domain/user"
+	"github.com/authplex/internal/domain/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -112,4 +112,111 @@ func TestUserRepo_Delete(t *testing.T) {
 
 	_, err := repo.GetByID(ctx, "u1", "t1")
 	require.Error(t, err)
+}
+
+func TestUserRepo_GetByPhone(t *testing.T) {
+	repo := NewInMemoryUserRepository()
+	ctx := context.Background()
+
+	u, _ := user.NewUser("u1", "t1", "phone@example.com", "Phone User")
+	u.Phone = "+15550001111"
+	require.NoError(t, repo.Create(ctx, u))
+
+	got, err := repo.GetByPhone(ctx, "+15550001111", "t1")
+	require.NoError(t, err)
+	assert.Equal(t, "u1", got.ID)
+	assert.Equal(t, "+15550001111", got.Phone)
+}
+
+func TestUserRepo_GetByPhone_NotFound(t *testing.T) {
+	repo := NewInMemoryUserRepository()
+	_, err := repo.GetByPhone(context.Background(), "+19999999999", "t1")
+	require.Error(t, err)
+}
+
+func TestUserRepo_HardDelete(t *testing.T) {
+	repo := NewInMemoryUserRepository()
+	ctx := context.Background()
+
+	u, _ := user.NewUser("u1", "t1", "hard@example.com", "Hard Delete")
+	require.NoError(t, repo.Create(ctx, u))
+
+	require.NoError(t, repo.HardDelete(ctx, "u1", "t1"))
+
+	_, err := repo.GetByID(ctx, "u1", "t1")
+	require.Error(t, err)
+}
+
+func TestUserRepo_HardDelete_NotFound(t *testing.T) {
+	repo := NewInMemoryUserRepository()
+	err := repo.HardDelete(context.Background(), "nonexistent", "t1")
+	require.Error(t, err)
+}
+
+func TestUserRepo_IncrementTokenVersion(t *testing.T) {
+	repo := NewInMemoryUserRepository()
+	ctx := context.Background()
+
+	u, _ := user.NewUser("u1", "t1", "tv@example.com", "TV User")
+	require.NoError(t, repo.Create(ctx, u))
+
+	before, _ := repo.GetByID(ctx, "u1", "t1")
+	require.NoError(t, repo.IncrementTokenVersion(ctx, "u1", "t1"))
+
+	after, err := repo.GetByID(ctx, "u1", "t1")
+	require.NoError(t, err)
+	assert.Equal(t, before.TokenVersion+1, after.TokenVersion)
+}
+
+func TestUserRepo_IncrementTokenVersion_NotFound(t *testing.T) {
+	repo := NewInMemoryUserRepository()
+	err := repo.IncrementTokenVersion(context.Background(), "nonexistent", "t1")
+	require.Error(t, err)
+}
+
+func TestUserRepo_ListByTenant(t *testing.T) {
+	repo := NewInMemoryUserRepository()
+	ctx := context.Background()
+
+	u1, _ := user.NewUser("u1", "t1", "a@example.com", "Alice")
+	u2, _ := user.NewUser("u2", "t1", "b@example.com", "Bob")
+	u3, _ := user.NewUser("u3", "t2", "c@example.com", "Carol")
+	repo.Create(ctx, u1) //nolint:errcheck
+	repo.Create(ctx, u2) //nolint:errcheck
+	repo.Create(ctx, u3) //nolint:errcheck
+
+	users, total, err := repo.ListByTenant(ctx, "t1", 0, 10)
+	require.NoError(t, err)
+	assert.Equal(t, 2, total)
+	assert.Len(t, users, 2)
+}
+
+func TestUserRepo_ListByTenant_Pagination(t *testing.T) {
+	repo := NewInMemoryUserRepository()
+	ctx := context.Background()
+
+	u1, _ := user.NewUser("u1", "t1", "a@example.com", "Alice")
+	u2, _ := user.NewUser("u2", "t1", "b@example.com", "Bob")
+	u3, _ := user.NewUser("u3", "t1", "c@example.com", "Carol")
+	repo.Create(ctx, u1) //nolint:errcheck
+	repo.Create(ctx, u2) //nolint:errcheck
+	repo.Create(ctx, u3) //nolint:errcheck
+
+	users, total, err := repo.ListByTenant(ctx, "t1", 0, 2)
+	require.NoError(t, err)
+	assert.Equal(t, 3, total)
+	assert.Len(t, users, 2)
+}
+
+func TestUserRepo_ListByTenant_OffsetBeyondTotal(t *testing.T) {
+	repo := NewInMemoryUserRepository()
+	ctx := context.Background()
+
+	u1, _ := user.NewUser("u1", "t1", "a@example.com", "Alice")
+	repo.Create(ctx, u1) //nolint:errcheck
+
+	users, total, err := repo.ListByTenant(ctx, "t1", 10, 10)
+	require.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Empty(t, users)
 }

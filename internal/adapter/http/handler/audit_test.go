@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	auditsvc "github.com/authcore/internal/application/audit"
-	"github.com/authcore/internal/adapter/cache"
+	auditsvc "github.com/authplex/internal/application/audit"
+	"github.com/authplex/internal/adapter/cache"
 	"github.com/stretchr/testify/assert"
 )
 

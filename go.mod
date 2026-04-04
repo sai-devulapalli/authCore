@@ -1,4 +1,4 @@
-module github.com/authcore
+module github.com/authplex
 
 go 1.25.0
 

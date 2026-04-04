@@ -1,4 +1,4 @@
-# AuthCore — Implementation Tracker
+# AuthPlex — Implementation Tracker
 
 > **Last updated:** 2026-03-29
 > **Stats:** ~273 files | 812 test functions | 141 E2E + 30 Playwright | 80%+ coverage | 49 endpoints | 47 packages | 19 migrations
@@ -16,7 +16,7 @@
 | 5 | JWKS endpoint | Done | 2 | RFC 7517 compliant |
 | 6 | Authorization Code Flow + PKCE | Done | 3 | S256 method |
 | 7 | Token Issuance (access_token, id_token) | Done | 3 | + refresh_token in Module 5 |
-| 8 | Multi-tenancy (domain-based or header-based) | Done | 4 | Configurable via AUTHCORE_TENANT_MODE |
+| 8 | Multi-tenancy (domain-based or header-based) | Done | 4 | Configurable via AUTHPLEX_TENANT_MODE |
 | 9 | Isolated signing keys per tenant | Done | 4 | RSA-2048 + EC P-256 |
 | 10 | Repository pattern (Postgres + SQL Server) | Partial | 0-4 | Postgres: JWK + tenant repos done. SQL Server: migrations placeholder only |
 | 11 | Hexagonal architecture (domain/application/adapter) | Done | All | Strict layer separation throughout |
@@ -59,7 +59,7 @@
 | 7b | WebAuthn/FIDO2 | Done | ~8 | ~30 | WebAuthn registration/login ceremonies, credential storage, go-webauthn library, 4 HTTP endpoints |
 | 11 | Token/Key Lifecycle | Done | ~6 | ~20 | Refresh token cleanup service, key auto-rotation, background cleanup goroutine, configurable retention/rotation |
 | 12 | Social Login Improvements | Done | ~3 | ~15 | ID token decode with JWKS validation, Apple JWT client_secret generation (ES256) |
-| SDK | Go SDK (pkg/authcore) | Done | ~5 | ~10 | Embeddable AuthCore as library: Register, Login, IssueTokens, VerifyJWT, MountRoutes, RequireJWT middleware |
+| SDK | Go SDK (pkg/authplex) | Done | ~5 | ~10 | Embeddable AuthPlex as library: Register, Login, IssueTokens, VerifyJWT, MountRoutes, RequireJWT middleware |
 
 ---
 
@@ -137,17 +137,17 @@
 | OpenTelemetry tracing middleware | 10 | User: "RBAC, Audit logging, OpenTelemetry tracing, mTLS" | Done |
 | mTLS for M2M communication | 10 | User: "mTLS for M2M" | Done |
 | Go SDK (embeddable library) | SDK | User: "can it be an SDK?" | Done |
-| Java SDK (authcore-java-sdk) | SDK | User: "this should be for java spring boot, .net also right?" | Done |
-| .NET SDK (authcore-dotnet-sdk) | SDK | User: "Yes all" | Done |
-| Node.js SDK (authcore-js) | SDK | User: "Yes all" | Done |
-| Python SDK (authcore-python) | SDK | User: "Yes all" | Done |
+| Java SDK (authplex-java-sdk) | SDK | User: "this should be for java spring boot, .net also right?" | Done |
+| .NET SDK (authplex-dotnet-sdk) | SDK | User: "Yes all" | Done |
+| Node.js SDK (authplex-js) | SDK | User: "Yes all" | Done |
+| Python SDK (authplex-python) | SDK | User: "Yes all" | Done |
 | Spring Boot test client | Test | User: "create a client in java springboot for testing" | Done |
 | WebAuthn/FIDO2 MFA | 7b | User: item #10 from pending list | Done |
 | ID token decode from social providers | 12 | User: item #11 from pending list | Done |
 | Apple JWT client_secret generation | 12 | User: item #12 from pending list | Done |
 | Refresh token cleanup service | 11 | User: item #13 from pending list | Done |
 | Key auto-rotation service | 11 | User: item #14 from pending list | Done |
-| Admin UI (separate repo decision) | — | User: item #20 from pending list | Planned (authcore-admin repo) |
+| Admin UI (separate repo decision) | — | User: item #20 from pending list | Planned (authplex-admin repo) |
 | Comprehensive E2E test suite | E2E | User: "run the plan" | Done — 131 subtests, 6 files, covers all endpoints |
 
 ---
@@ -169,7 +169,7 @@
 | # | Item | Effort |
 |---|------|--------|
 | ~~6~~ | ~~Rate limiting~~ | ~~Medium~~ | **Done** — sliding window per IP, 20 req/min on /login, /token, /otp/verify, /mfa/verify |
-| ~~7~~ | ~~Encryption at rest~~ | ~~Medium~~ | **Done** — AES-256-GCM encryptor with AUTHCORE_ENCRYPTION_KEY config |
+| ~~7~~ | ~~Encryption at rest~~ | ~~Medium~~ | **Done** — AES-256-GCM encryptor with AUTHPLEX_ENCRYPTION_KEY config |
 | ~~8~~ | ~~Email verification on register~~ | ~~Small~~ | **Done** — auto-sends verification OTP on register, VerificationSent in response |
 | ~~9~~ | ~~SAML 2.0~~ | ~~Large~~ | **Done** — crewjam/saml library, 3 endpoints (/saml/metadata, /saml/sso, /saml/acs), Okta/Azure AD/ADFS support |
 
@@ -181,8 +181,8 @@
 | ~~11~~ | ~~ID token decode from social login providers~~ | ~~Small~~ | **Done** — JWKS signature validation, stdlib crypto |
 | ~~12~~ | ~~Apple JWT client_secret generation~~ | ~~Medium~~ | **Done** — ES256 signing, ExchangeCodeWithConfig |
 | ~~13~~ | ~~Refresh token cleanup (expired accumulation)~~ | ~~Small~~ | **Done** — Background cleanup service, 7-day retention |
-| ~~14~~ | ~~Key auto-rotation~~ | ~~Small~~ | **Done** — 90-day default, configurable via AUTHCORE_KEY_ROTATION_DAYS |
-| 15 | Admin CLI tool | Small | `authcore tenant create --domain example.com` |
+| ~~14~~ | ~~Key auto-rotation~~ | ~~Small~~ | **Done** — 90-day default, configurable via AUTHPLEX_KEY_ROTATION_DAYS |
+| 15 | Admin CLI tool | Small | `authplex tenant create --domain example.com` |
 | 16 | SQL Server repository implementations | Medium | |
 | 17 | CORS per-client | Small | Currently global; should be per-client redirect origin whitelist |
 | ~~18~~ | ~~Postgres RBAC repos~~ | ~~Medium~~ | **Done** — PostgresRoleRepository + PostgresAssignmentRepository |
@@ -198,7 +198,7 @@
 | ~~20~~ | ~~mTLS~~ | ~~Medium~~ | **Done** — mTLS middleware for client certificate verification |
 | ~~21~~ | ~~OpenTelemetry traces~~ | ~~Medium~~ | **Done** — Tracing middleware with distributed trace context |
 | 22 | LDAP integration | Medium |
-| 23 | Admin UI (separate repo: authcore-admin) | Large | Dashboard + CRUD done; needs user mgmt, SAML config |
+| 23 | Admin UI (separate repo: authplex-admin) | Large | Dashboard + CRUD done; needs user mgmt, SAML config |
 | 24 | JWE (encrypted tokens) | Medium |
 | ~~25~~ | ~~Audit logging~~ | ~~Medium~~ | **Done** — 25+ event types, domain + repository + query API |
 | 26 | Security audit | External |
@@ -231,30 +231,30 @@
 
 | Variable | Default | Added In |
 |----------|---------|----------|
-| `AUTHCORE_ENV` | `local` | Module 0 |
-| `AUTHCORE_HTTP_PORT` | `8080` | Module 0 |
-| `AUTHCORE_DATABASE_DSN` | `postgres://...` | Module 0 |
-| `AUTHCORE_DATABASE_DRIVER` | `postgres` | Module 0 |
-| `AUTHCORE_REDIS_URL` | `redis://localhost:6379` | Module 0 |
-| `AUTHCORE_LOG_LEVEL` | (auto) | Module 1 |
-| `AUTHCORE_TENANT_MODE` | `header` | Module 4 |
-| `AUTHCORE_ISSUER` | `http://localhost:8080` | Module 4 |
-| `AUTHCORE_CORS_ORIGINS` | `*` | Production Hardening |
-| `AUTHCORE_ADMIN_API_KEY` | (empty = dev mode) | Production Hardening |
-| `AUTHCORE_SMTP_HOST` | (empty) | Module 9 |
-| `AUTHCORE_SMTP_PORT` | `587` | Module 9 |
-| `AUTHCORE_SMTP_USERNAME` | (empty) | Module 9 |
-| `AUTHCORE_SMTP_PASSWORD` | (empty) | Module 9 |
-| `AUTHCORE_SMTP_FROM` | `noreply@authcore.local` | Module 9 |
-| `AUTHCORE_SMS_PROVIDER` | (empty) | Module 9 |
-| `AUTHCORE_SMS_ACCOUNT_ID` | (empty) | Module 9 |
-| `AUTHCORE_SMS_AUTH_TOKEN` | (empty) | Module 9 |
-| `AUTHCORE_SMS_FROM_NUMBER` | (empty) | Module 9 |
-| `AUTHCORE_ENCRYPTION_KEY` | (empty) | Production Hardening |
-| `AUTHCORE_KEY_ROTATION_DAYS` | `90` | Module 11 |
-| `AUTHCORE_WEBAUTHN_RP_ID` | `localhost` | Module 7b |
-| `AUTHCORE_WEBAUTHN_RP_NAME` | `AuthCore` | Module 7b |
-| `AUTHCORE_WEBAUTHN_RP_ORIGINS` | `http://localhost:8080` | Module 7b |
+| `AUTHPLEX_ENV` | `local` | Module 0 |
+| `AUTHPLEX_HTTP_PORT` | `8080` | Module 0 |
+| `AUTHPLEX_DATABASE_DSN` | `postgres://...` | Module 0 |
+| `AUTHPLEX_DATABASE_DRIVER` | `postgres` | Module 0 |
+| `AUTHPLEX_REDIS_URL` | `redis://localhost:6379` | Module 0 |
+| `AUTHPLEX_LOG_LEVEL` | (auto) | Module 1 |
+| `AUTHPLEX_TENANT_MODE` | `header` | Module 4 |
+| `AUTHPLEX_ISSUER` | `http://localhost:8080` | Module 4 |
+| `AUTHPLEX_CORS_ORIGINS` | `*` | Production Hardening |
+| `AUTHPLEX_ADMIN_API_KEY` | (empty = dev mode) | Production Hardening |
+| `AUTHPLEX_SMTP_HOST` | (empty) | Module 9 |
+| `AUTHPLEX_SMTP_PORT` | `587` | Module 9 |
+| `AUTHPLEX_SMTP_USERNAME` | (empty) | Module 9 |
+| `AUTHPLEX_SMTP_PASSWORD` | (empty) | Module 9 |
+| `AUTHPLEX_SMTP_FROM` | `noreply@authplex.local` | Module 9 |
+| `AUTHPLEX_SMS_PROVIDER` | (empty) | Module 9 |
+| `AUTHPLEX_SMS_ACCOUNT_ID` | (empty) | Module 9 |
+| `AUTHPLEX_SMS_AUTH_TOKEN` | (empty) | Module 9 |
+| `AUTHPLEX_SMS_FROM_NUMBER` | (empty) | Module 9 |
+| `AUTHPLEX_ENCRYPTION_KEY` | (empty) | Production Hardening |
+| `AUTHPLEX_KEY_ROTATION_DAYS` | `90` | Module 11 |
+| `AUTHPLEX_WEBAUTHN_RP_ID` | `localhost` | Module 7b |
+| `AUTHPLEX_WEBAUTHN_RP_NAME` | `AuthPlex` | Module 7b |
+| `AUTHPLEX_WEBAUTHN_RP_ORIGINS` | `http://localhost:8080` | Module 7b |
 
 ---
 
@@ -294,14 +294,14 @@
 | 2026-03-27 | MFA enforcement: MFAPolicy on Tenant, /authorize intercepts when MFA required + user has TOTP enrolled, returns challenge JSON |
 | 2026-03-27 | E2E tests: golden path (3 tests), Docker testcontainers variant + in-memory variant, scope + client enforcement tests |
 | 2026-03-28 | Rate limiting: sliding window per IP on /login, /token, /otp/verify, /mfa/verify (20 req/min) |
-| 2026-03-28 | Encryption at rest: AES-256-GCM encryptor, AUTHCORE_ENCRYPTION_KEY config, EncryptIfConfigured/DecryptIfConfigured helpers |
+| 2026-03-28 | Encryption at rest: AES-256-GCM encryptor, AUTHPLEX_ENCRYPTION_KEY config, EncryptIfConfigured/DecryptIfConfigured helpers |
 | 2026-03-28 | Email verification: auto-send OTP on register, VerificationSent field in register response |
 | 2026-03-28 | **All 8 go-to-market items complete** |
 | 2026-03-28 | RBAC: roles + permissions per tenant, wildcard matching, JWT claims enrichment, full CRUD API |
 | 2026-03-28 | Audit logging: 25+ event types, domain + in-memory repository + query API with filters |
 | 2026-03-28 | OpenTelemetry: tracing middleware with distributed trace context injection |
 | 2026-03-28 | mTLS: mutual TLS middleware for M2M client certificate verification |
-| 2026-03-28 | Go SDK: embeddable AuthCore as library (pkg/authcore), Register/Login/IssueTokens/VerifyJWT/MountRoutes |
+| 2026-03-28 | Go SDK: embeddable AuthPlex as library (pkg/authplex), Register/Login/IssueTokens/VerifyJWT/MountRoutes |
 | 2026-03-28 | Wrapper SDKs: Java, .NET, Node.js, Python — typed clients in separate repositories |
 | 2026-03-28 | Spring Boot test client: OAuth2 resource server with JWT verification via JWKS |
 | 2026-03-26 | Documentation update: all 13 docs updated to reflect RBAC, audit, OTel, mTLS, SDKs |
@@ -313,7 +313,7 @@
 | 2026-03-29 | Background cleanup service: single goroutine manages token cleanup + key rotation + inactive key cleanup |
 | 2026-03-29 | Coverage threshold adjusted to 83% (WebAuthn library requires browser attestation for full coverage) |
 | 2026-03-29 | Comprehensive E2E test suite: 131 subtests across 6 files (auth flows, management CRUD, RBAC, MFA, multi-tenant, OIDC, CORS) |
-| 2026-03-29 | Admin UI: separate React+Vite+TypeScript repo (authcore-admin) with dashboard, tenant/client/provider/role CRUD, audit logs |
+| 2026-03-29 | Admin UI: separate React+Vite+TypeScript repo (authplex-admin) with dashboard, tenant/client/provider/role CRUD, audit logs |
 | 2026-03-29 | E2E test plan: docs/E2E_TEST_PLAN.md with 200+ test cases, 7 golden path flows, 3 test matrices |
 | 2026-03-29 | GTM: Token versioning, Postgres RBAC repos, audit event auto-wiring (19 events across 6 services) |
 | 2026-03-29 | GTM: JWT-based admin auth with 4 roles (super_admin, tenant_admin, readonly, auditor) |

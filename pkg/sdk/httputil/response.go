@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	sdkerrors "github.com/authcore/pkg/sdk/errors"
+	sdkerrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // JSONResponse is the standard envelope for API responses.

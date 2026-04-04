@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/authcore/internal/domain/webhook"
+	"github.com/authplex/internal/domain/webhook"
 )
 
 // InMemoryWebhookRepository implements webhook.Repository.

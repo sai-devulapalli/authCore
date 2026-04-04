@@ -1,10 +1,10 @@
-# AuthCore vs Alternatives — Detailed Comparison
+# AuthPlex vs Alternatives — Detailed Comparison
 
-> **Last updated:** 2026-03-29 | AuthCore: 273 files, 812 tests, 49 endpoints
+> **Last updated:** 2026-03-29 | AuthPlex: 273 files, 812 tests, 49 endpoints
 
 ## Overview
 
-| | **AuthCore** | **Keycloak** | **IdentityServer** (Duende) | **AWS Cognito** |
+| | **AuthPlex** | **Keycloak** | **IdentityServer** (Duende) | **AWS Cognito** |
 |--|-------------|-------------|---------------------------|----------------|
 | Language | Go | Java (Quarkus) | .NET (C#) | Managed service |
 | Deployment | Single binary / Docker | Docker / K8s | NuGet in your .NET app | AWS-hosted SaaS |
@@ -19,7 +19,7 @@
 
 ## Protocol Support
 
-| Protocol | **AuthCore** | **Keycloak** | **IdentityServer** | **Cognito** |
+| Protocol | **AuthPlex** | **Keycloak** | **IdentityServer** | **Cognito** |
 |----------|-------------|-------------|-------------------|------------|
 | OIDC / OAuth 2.0 | All 5 grant types | All + extensions | All | Auth Code + Implicit + Client Creds |
 | PKCE (RFC 7636) | S256 | S256 + plain | S256 + plain | S256 |
@@ -38,7 +38,7 @@
 
 ## Identity & User Management
 
-| Feature | **AuthCore** | **Keycloak** | **IdentityServer** | **Cognito** |
+| Feature | **AuthPlex** | **Keycloak** | **IdentityServer** | **Cognito** |
 |---------|-------------|-------------|-------------------|------------|
 | User Registration | API only (POST /register) | UI + API | No (bring your own) | UI + API + Hosted UI |
 | User Login | API only (POST /login) | UI + API + themes | No (bring your own) | UI + API + Hosted UI |
@@ -58,7 +58,7 @@
 
 ## Multi-Factor Authentication
 
-| MFA Feature | **AuthCore** | **Keycloak** | **IdentityServer** | **Cognito** |
+| MFA Feature | **AuthPlex** | **Keycloak** | **IdentityServer** | **Cognito** |
 |------------|-------------|-------------|-------------------|------------|
 | TOTP (RFC 6238) | Yes | Yes | Via extensibility | Yes |
 | WebAuthn / FIDO2 | Yes (go-webauthn library) | Yes | Via extensibility | No (custom only) |
@@ -74,7 +74,7 @@
 
 ## Social Login / Identity Brokering
 
-| Provider | **AuthCore** | **Keycloak** | **IdentityServer** | **Cognito** |
+| Provider | **AuthPlex** | **Keycloak** | **IdentityServer** | **Cognito** |
 |----------|-------------|-------------|-------------------|------------|
 | Google | Yes | Yes | Yes (plugin) | Yes |
 | GitHub | Yes | Yes | Community | **No** |
@@ -93,7 +93,7 @@
 
 ## Client Management
 
-| Feature | **AuthCore** | **Keycloak** | **IdentityServer** | **Cognito** |
+| Feature | **AuthPlex** | **Keycloak** | **IdentityServer** | **Cognito** |
 |---------|-------------|-------------|-------------------|------------|
 | Client Registry | API CRUD | Admin UI + API | Config / DB | Console + API |
 | Public / Confidential | Both | Both + bearer-only + service account | Both | Both |
@@ -109,7 +109,7 @@
 
 ## Multi-Tenancy
 
-| Feature | **AuthCore** | **Keycloak** | **IdentityServer** | **Cognito** |
+| Feature | **AuthPlex** | **Keycloak** | **IdentityServer** | **Cognito** |
 |---------|-------------|-------------|-------------------|------------|
 | Tenancy Model | Native (header or domain) | Realms | Manual | User Pools |
 | Per-tenant signing keys | Yes (RSA-2048 + EC P-256) | Yes (per-realm) | Yes | Managed |
@@ -125,9 +125,9 @@
 
 ## Operations & Infrastructure
 
-| Feature | **AuthCore** | **Keycloak** | **IdentityServer** | **Cognito** |
+| Feature | **AuthPlex** | **Keycloak** | **IdentityServer** | **Cognito** |
 |---------|-------------|-------------|-------------------|------------|
-| Admin UI | Separate SPA (authcore-admin) | Full web console (beautiful) | No built-in (Duende sells one) | AWS Console |
+| Admin UI | Separate SPA (authplex-admin) | Full web console (beautiful) | No built-in (Duende sells one) | AWS Console |
 | Admin API | REST (API key auth, JWT auth roadmap) | REST + Admin CLI + Java Admin Client | No built-in API | AWS SDK / CLI |
 | Admin CLI | **Roadmap** | kcadm.sh (powerful) | dotnet CLI | AWS CLI |
 | Health Check | /health endpoint | /health/ready, /health/live | Custom | CloudWatch |
@@ -147,7 +147,7 @@
 
 ## Security
 
-| Feature | **AuthCore** | **Keycloak** | **IdentityServer** | **Cognito** |
+| Feature | **AuthPlex** | **Keycloak** | **IdentityServer** | **Cognito** |
 |---------|-------------|-------------|-------------------|------------|
 | CORS | Global configurable | Per-client | Per-client | Per-pool |
 | CSRF Protection | State parameter (OAuth) | Built-in (cookies) | Built-in | Managed |
@@ -165,14 +165,14 @@
 
 ### License Cost
 
-| | AuthCore | Keycloak | IdentityServer | Cognito |
+| | AuthPlex | Keycloak | IdentityServer | Cognito |
 |--|---------|---------|----------------|---------|
 | License | Free | Free (Apache 2.0) | $1,500/yr (starter) to $12,000/yr (enterprise) | Free tier: 50K MAU |
 | Support | None | Red Hat SSO ($$$) or community | Duende support plans | AWS Support plans |
 
 ### Infrastructure Cost (monthly estimate)
 
-| Scale | AuthCore | Keycloak | IdentityServer | Cognito |
+| Scale | AuthPlex | Keycloak | IdentityServer | Cognito |
 |-------|---------|---------|----------------|---------|
 | Dev/Test | $0 (local) | $0 (local) | $0 (local) | $0 (free tier) |
 | 1K MAU | ~$15 | ~$30 | ~$25 + $125/mo license | ~$5 |
@@ -181,13 +181,13 @@
 | 1M MAU | ~$50 | ~$200 | ~$100 + $1,000/mo license | ~$5,500 |
 | 10M MAU | ~$100 | ~$400 | ~$200 + $1,000/mo license | ~$25,500 |
 
-AuthCore and Keycloak scale best cost-wise. Cognito becomes expensive at scale. IdentityServer has fixed license overhead.
+AuthPlex and Keycloak scale best cost-wise. Cognito becomes expensive at scale. IdentityServer has fixed license overhead.
 
 ---
 
 ## Extensibility
 
-| Extension Point | **AuthCore** | **Keycloak** | **IdentityServer** | **Cognito** |
+| Extension Point | **AuthPlex** | **Keycloak** | **IdentityServer** | **Cognito** |
 |----------------|-------------|-------------|-------------------|------------|
 | Custom Auth Logic | Port interfaces (Go) | SPI (Java) | Events + middleware (.NET) | Lambda triggers |
 | Custom User Store | user.Repository interface | User Federation SPI | IUserStore | Lambda triggers |
@@ -203,33 +203,33 @@ AuthCore and Keycloak scale best cost-wise. Cognito becomes expensive at scale. 
 
 ## Migration Path
 
-### From Keycloak to AuthCore
+### From Keycloak to AuthPlex
 
 | What | Effort | How |
 |------|--------|-----|
 | Users | Medium | Export realm JSON → import via /register API |
-| Clients | Small | Map Keycloak clients to AuthCore client registry |
+| Clients | Small | Map Keycloak clients to AuthPlex client registry |
 | Realms → Tenants | Small | 1 realm = 1 tenant |
 | Social IdPs | Small | Reconfigure providers per tenant |
-| SAML | **Blocked** | AuthCore doesn't support SAML yet |
-| Themes | N/A | AuthCore is headless, build your own UI |
+| SAML | **Blocked** | AuthPlex doesn't support SAML yet |
+| Themes | N/A | AuthPlex is headless, build your own UI |
 | Custom SPIs | Medium | Rewrite as Go port implementations |
 
-### From Cognito to AuthCore
+### From Cognito to AuthPlex
 
 | What | Effort | How |
 |------|--------|-----|
 | Users | Medium | Export via Cognito API → import via /register |
 | User Pools → Tenants | Small | 1 pool = 1 tenant |
-| App Clients | Small | Map to AuthCore client registry |
+| App Clients | Small | Map to AuthPlex client registry |
 | Lambda Triggers | Medium | Rewrite as Go service logic |
 | Hosted UI | N/A | Build your own |
 
-### From IdentityServer to AuthCore
+### From IdentityServer to AuthPlex
 
 | What | Effort | How |
 |------|--------|-----|
-| Clients | Small | Map configuration to AuthCore API |
+| Clients | Small | Map configuration to AuthPlex API |
 | Users | Depends | Migrate from your user store |
 | Custom logic | Medium | .NET → Go port implementations |
 | UI | N/A | Already headless |
@@ -238,7 +238,7 @@ AuthCore and Keycloak scale best cost-wise. Cognito becomes expensive at scale. 
 
 ## Decision Framework
 
-### Choose AuthCore if:
+### Choose AuthPlex if:
 
 - You want **full control** over the authentication UX (headless, API-only)
 - You're building a **multi-tenant SaaS** and need lightweight tenant isolation
@@ -275,13 +275,13 @@ AuthCore and Keycloak scale best cost-wise. Cognito becomes expensive at scale. 
 
 ### A note on compliance
 
-AuthCore doesn't need its own SOC2/HIPAA certification when deployed as a **sidecar** or **embedded library**. It inherits your app's compliance posture — the same way bcrypt, PostgreSQL, or any other library doesn't need separate certification. AuthCore provides the building blocks auditors need (audit logs, encryption, RBAC, consent, GDPR erasure). The compliance gap only applies if you sell AuthCore as a standalone SaaS like Auth0.
+AuthPlex doesn't need its own SOC2/HIPAA certification when deployed as a **sidecar** or **embedded library**. It inherits your app's compliance posture — the same way bcrypt, PostgreSQL, or any other library doesn't need separate certification. AuthPlex provides the building blocks auditors need (audit logs, encryption, RBAC, consent, GDPR erasure). The compliance gap only applies if you sell AuthPlex as a standalone SaaS like Auth0.
 
 ---
 
 ## Roadmap Impact on Comparison
 
-After implementing the [Tier 1-3 roadmap](ROADMAP.md), AuthCore closes every major gap:
+After implementing the [Tier 1-3 roadmap](ROADMAP.md), AuthPlex closes every major gap:
 
 | Gap Today | Roadmap Item | Tier | After |
 |-----------|-------------|------|-------|
@@ -301,14 +301,14 @@ After implementing the [Tier 1-3 roadmap](ROADMAP.md), AuthCore closes every maj
 
 ```
 Keycloak:       ████████████████████████████░░  95%
-AuthCore:       ████████████████████████████░░  95%  (up from 65% pre-RBAC/Audit/OTel/mTLS/SAML)
+AuthPlex:       ████████████████████████████░░  95%  (up from 65% pre-RBAC/Audit/OTel/mTLS/SAML)
 Cognito:        ██████████████████████░░░░░░░░  75%
 IdentityServer: ████████████████████░░░░░░░░░░  70%
 
-AuthCore post-roadmap (projected):
+AuthPlex post-roadmap (projected):
                 ████████████████████████████░░  96%
 ```
 
-AuthCore's **protocol layer** (OIDC, OAuth, JWT, PKCE, WebAuthn) is on par with all three. The remaining gap is **enterprise**: SAML 2.0, SCIM, and external security audit.
+AuthPlex's **protocol layer** (OIDC, OAuth, JWT, PKCE, WebAuthn) is on par with all three. The remaining gap is **enterprise**: SAML 2.0, SCIM, and external security audit.
 
-With RBAC, audit logging, encryption at rest, rate limiting, mTLS, OTP (email + SMS), WebAuthn/FIDO2, Apple Sign In, automatic key rotation, token cleanup, OpenTelemetry, SAML 2.0, and 141 E2E tests — AuthCore is production-ready for enterprise use cases. For teams building custom auth UX on modern stacks, AuthCore provides comprehensive primitives with significantly lower operational overhead than Keycloak.
+With RBAC, audit logging, encryption at rest, rate limiting, mTLS, OTP (email + SMS), WebAuthn/FIDO2, Apple Sign In, automatic key rotation, token cleanup, OpenTelemetry, SAML 2.0, and 141 E2E tests — AuthPlex is production-ready for enterprise use cases. For teams building custom auth UX on modern stacks, AuthPlex provides comprehensive primitives with significantly lower operational overhead than Keycloak.

@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"github.com/authcore/internal/application/auth"
-	"github.com/authcore/pkg/sdk/httputil"
+	"github.com/authplex/internal/application/auth"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // RevokeHandler serves the token revocation endpoint (RFC 7009).

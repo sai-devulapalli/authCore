@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/authcore/internal/adapter/cache"
-	domainaudit "github.com/authcore/internal/domain/audit"
+	"github.com/authplex/internal/adapter/cache"
+	domainaudit "github.com/authplex/internal/domain/audit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

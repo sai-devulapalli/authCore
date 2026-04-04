@@ -15,9 +15,9 @@ import (
 	crewsaml "github.com/crewjam/saml"
 	"github.com/crewjam/saml/samlsp"
 
-	"github.com/authcore/internal/application/auth"
-	"github.com/authcore/internal/domain/identity"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/application/auth"
+	"github.com/authplex/internal/domain/identity"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // Service provides SAML 2.0 Service Provider operations.
@@ -227,7 +227,7 @@ func (s *Service) HandleACS(ctx context.Context, httpReq *http.Request, relaySta
 		return auth.AuthorizeResponse{}, linkErr
 	}
 
-	// Issue AuthCore authorization code
+	// Issue AuthPlex authorization code
 	authReq := auth.AuthorizeRequest{
 		ResponseType:        "code",
 		ClientID:            oauthState.OriginalClientID,

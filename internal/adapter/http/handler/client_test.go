@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	clientsvc "github.com/authcore/internal/application/client"
-	"github.com/authcore/internal/domain/client"
+	clientsvc "github.com/authplex/internal/application/client"
+	"github.com/authplex/internal/domain/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -232,4 +232,43 @@ func TestClientHandler_ResponseEnveloped(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &raw))
 	_, hasData := raw["data"]
 	assert.True(t, hasData, "client management API should use data envelope")
+}
+
+func TestClientHandler_HandleAPIKey_Success(t *testing.T) {
+	repo := &mockClientHandlerRepo{
+		getByIDFunc: func(_ context.Context, id, _ string) (client.Client, error) {
+			return client.Client{ID: id, TenantID: "t1", ClientType: client.Public}, nil
+		},
+	}
+	h := newClientHandler(repo)
+
+	req := httptest.NewRequest(http.MethodPost, "/tenants/t1/clients/c1/api-key", nil)
+	w := httptest.NewRecorder()
+
+	h.HandleAPIKey(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "api_key")
+}
+
+func TestClientHandler_HandleAPIKey_MethodNotAllowed(t *testing.T) {
+	h := newClientHandler(&mockClientHandlerRepo{})
+
+	req := httptest.NewRequest(http.MethodGet, "/tenants/t1/clients/c1/api-key", nil)
+	w := httptest.NewRecorder()
+
+	h.HandleAPIKey(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestClientHandler_HandleAPIKey_MissingTenantOrClient(t *testing.T) {
+	h := newClientHandler(&mockClientHandlerRepo{})
+
+	req := httptest.NewRequest(http.MethodPost, "/api-key", nil)
+	w := httptest.NewRecorder()
+
+	h.HandleAPIKey(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

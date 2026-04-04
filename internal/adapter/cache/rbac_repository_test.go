@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/authcore/internal/domain/rbac"
+	"github.com/authplex/internal/domain/rbac"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

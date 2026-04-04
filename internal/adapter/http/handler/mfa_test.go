@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/authcore/internal/application/auth"
-	"github.com/authcore/internal/application/jwks"
-	mfasvc "github.com/authcore/internal/application/mfa"
-	domainmfa "github.com/authcore/internal/domain/mfa"
-	"github.com/authcore/internal/domain/jwk"
-	"github.com/authcore/internal/domain/token"
+	"github.com/authplex/internal/application/auth"
+	"github.com/authplex/internal/application/jwks"
+	mfasvc "github.com/authplex/internal/application/mfa"
+	domainmfa "github.com/authplex/internal/domain/mfa"
+	"github.com/authplex/internal/domain/jwk"
+	"github.com/authplex/internal/domain/token"
 	"github.com/stretchr/testify/assert"
 )
 

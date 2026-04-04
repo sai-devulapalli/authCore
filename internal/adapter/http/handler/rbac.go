@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	rbacsvc "github.com/authcore/internal/application/rbac"
-	"github.com/authcore/pkg/sdk/httputil"
+	rbacsvc "github.com/authplex/internal/application/rbac"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // RBACHandler serves role and assignment management endpoints.

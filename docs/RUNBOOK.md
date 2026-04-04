@@ -1,4 +1,4 @@
-# AuthCore Operations Runbook
+# AuthPlex Operations Runbook
 
 ## Incident Response Procedures
 
@@ -7,12 +7,12 @@
 **Symptoms:** HTTP 500 errors, connection timeout logs, health check failures.
 
 **Diagnosis:**
-1. Check database connectivity: `psql -h <host> -U authcore -d authcore -c "SELECT 1"`
+1. Check database connectivity: `psql -h <host> -U authplex -d authplex -c "SELECT 1"`
 2. Review database logs for OOM, disk full, or connection limit errors.
 3. Check `pg_stat_activity` for long-running queries or lock contention.
 
 **Resolution:**
-1. If connection pool exhausted: restart the AuthCore process to reset connections.
+1. If connection pool exhausted: restart the AuthPlex process to reset connections.
 2. If disk full: expand storage or archive old audit events.
 3. If Postgres crashed: restart the database service and verify replication status.
 4. If DNS issue: verify database hostname resolves correctly.
@@ -26,7 +26,7 @@
 **Symptoms:** Session creation/validation failures, increased latency on token operations.
 
 **Diagnosis:**
-1. Check Redis connectivity: `redis-cli -u <AUTHCORE_REDIS_URL> ping`
+1. Check Redis connectivity: `redis-cli -u <AUTHPLEX_REDIS_URL> ping`
 2. Review Redis logs for memory limits or eviction.
 
 **Resolution:**
@@ -34,7 +34,7 @@
 2. If memory exhausted: increase `maxmemory` or review eviction policy.
 3. If network partition: verify security group / firewall rules.
 
-**Fallback:** AuthCore degrades gracefully. Stateless JWT validation continues to work without Redis. Session-based flows will fail until Redis recovers.
+**Fallback:** AuthPlex degrades gracefully. Stateless JWT validation continues to work without Redis. Session-based flows will fail until Redis recovers.
 
 ---
 
@@ -119,11 +119,11 @@
 **Diagnosis:**
 1. Check JWK repository for the tenant: does an active key exist?
 2. Review logs for database write failures during key generation.
-3. Verify the encryption key (`AUTHCORE_ENCRYPTION_KEY`) is set and valid.
+3. Verify the encryption key (`AUTHPLEX_ENCRYPTION_KEY`) is set and valid.
 
 **Resolution:**
 1. If no active key: manually trigger key rotation via the management API.
 2. If database write failed: resolve the database issue first (see "Database Unavailable").
-3. If encryption key missing: set `AUTHCORE_ENCRYPTION_KEY` and restart.
+3. If encryption key missing: set `AUTHPLEX_ENCRYPTION_KEY` and restart.
 
-**Prevention:** Configure `AUTHCORE_KEY_ROTATION_DAYS` (default 90) and monitor key expiry dates. Set up alerts for keys expiring within 7 days.
+**Prevention:** Configure `AUTHPLEX_KEY_ROTATION_DAYS` (default 90) and monitor key expiry dates. Set up alerts for keys expiring within 7 days.

@@ -3,7 +3,7 @@ package oauth
 import (
 	"testing"
 
-	"github.com/authcore/internal/domain/identity"
+	"github.com/authplex/internal/domain/identity"
 	"github.com/stretchr/testify/assert"
 )
 

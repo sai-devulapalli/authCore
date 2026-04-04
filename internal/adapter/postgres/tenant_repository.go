@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/authcore/internal/domain/tenant"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/tenant"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // TenantRepository implements tenant.Repository using PostgreSQL.

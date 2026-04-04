@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	clientsvc "github.com/authcore/internal/application/client"
-	"github.com/authcore/pkg/sdk/httputil"
+	clientsvc "github.com/authplex/internal/application/client"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // ClientHandler serves the client management API.

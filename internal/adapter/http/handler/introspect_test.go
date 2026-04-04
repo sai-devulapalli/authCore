@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/authcore/internal/application/auth"
-	"github.com/authcore/internal/application/jwks"
+	"github.com/authplex/internal/application/auth"
+	"github.com/authplex/internal/application/jwks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

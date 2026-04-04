@@ -4,8 +4,8 @@ import (
 	"crypto/x509"
 	"net/http"
 
-	apperrors "github.com/authcore/pkg/sdk/errors"
-	"github.com/authcore/pkg/sdk/httputil"
+	apperrors "github.com/authplex/pkg/sdk/errors"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // MTLS is middleware that verifies client TLS certificates for M2M authentication.

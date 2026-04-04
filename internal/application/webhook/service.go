@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/authcore/internal/domain/webhook"
+	"github.com/authplex/internal/domain/webhook"
 )
 
 // Service provides webhook management and delivery operations.
@@ -99,7 +99,7 @@ func (s *Service) deliver(hook webhook.Webhook, body []byte) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-AuthCore-Signature", sign(hook.Secret, body))
+	req.Header.Set("X-AuthPlex-Signature", sign(hook.Secret, body))
 
 	resp, err := s.client.Do(req)
 	if err != nil {

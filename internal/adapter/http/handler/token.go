@@ -3,10 +3,10 @@ package handler
 import (
 	"net/http"
 
-	"github.com/authcore/internal/application/auth"
-	clientsvc "github.com/authcore/internal/application/client"
-	"github.com/authcore/internal/domain/client"
-	"github.com/authcore/pkg/sdk/httputil"
+	"github.com/authplex/internal/application/auth"
+	clientsvc "github.com/authplex/internal/application/client"
+	"github.com/authplex/internal/domain/client"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // TokenHandler serves the OAuth 2.0 token endpoint.

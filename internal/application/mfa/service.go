@@ -10,11 +10,11 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/authcore/internal/application/auth"
-	auditsvc "github.com/authcore/internal/application/audit"
-	domainaudit "github.com/authcore/internal/domain/audit"
-	domainmfa "github.com/authcore/internal/domain/mfa"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/application/auth"
+	auditsvc "github.com/authplex/internal/application/audit"
+	domainaudit "github.com/authplex/internal/domain/audit"
+	domainmfa "github.com/authplex/internal/domain/mfa"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 )
@@ -113,7 +113,7 @@ func (s *Service) EnrollTOTP(ctx context.Context, req EnrollRequest) (EnrollResp
 	}
 
 	encodedSecret := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(secret)
-	otpauthURI := domainmfa.BuildOTPAuthURI("AuthCore", req.Subject, encodedSecret)
+	otpauthURI := domainmfa.BuildOTPAuthURI("AuthPlex", req.Subject, encodedSecret)
 
 	s.logger.Info("TOTP enrollment initiated", "subject", req.Subject, "tenant_id", req.TenantID)
 	if s.auditSvc != nil {

@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/authcore/internal/domain/identity"
+	"github.com/authplex/internal/domain/identity"
 )
 
 // HTTPOAuthClient implements identity.OAuthClient using net/http.

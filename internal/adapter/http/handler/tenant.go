@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	tenantsvc "github.com/authcore/internal/application/tenant"
-	"github.com/authcore/pkg/sdk/httputil"
+	tenantsvc "github.com/authplex/internal/application/tenant"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // TenantHandler serves the tenant management API.

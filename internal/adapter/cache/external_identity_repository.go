@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/authcore/internal/domain/identity"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/identity"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // InMemoryExternalIdentityRepository implements identity.ExternalIdentityRepository.

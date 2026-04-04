@@ -1,9 +1,9 @@
-# AuthCore — Authentication Flows
+# AuthPlex — Authentication Flows
 
 ## 1. User Registration + Email Verification
 
 ```
-Client App                        AuthCore                         Email Service
+Client App                        AuthPlex                         Email Service
     │                                │                                  │
     │  POST /register                │                                  │
     │  {email, password, name}       │                                  │
@@ -36,7 +36,7 @@ Client App                        AuthCore                         Email Service
 ## 2. Login (Email + Password)
 
 ```
-Client App                        AuthCore
+Client App                        AuthPlex
     │                                │
     │  POST /login                   │
     │  {email, password}             │
@@ -54,7 +54,7 @@ Client App                        AuthCore
 ## 3. Login via OTP (Passwordless)
 
 ```
-Client App                        AuthCore                         Email/SMS
+Client App                        AuthPlex                         Email/SMS
     │                                │                                │
     │  POST /otp/request             │                                │
     │  {email, purpose: "login"}     │                                │
@@ -80,7 +80,7 @@ Client App                        AuthCore                         Email/SMS
 ## 4. Authorization Code + PKCE (Primary OAuth Flow)
 
 ```
-SPA / Mobile                     AuthCore                         Resource API
+SPA / Mobile                     AuthPlex                         Resource API
     │                                │                                │
     │  1. Generate PKCE pair         │                                │
     │     verifier = random(43)      │                                │
@@ -139,7 +139,7 @@ SPA / Mobile                     AuthCore                         Resource API
 ## 5. Authorization Code + PKCE + MFA
 
 ```
-SPA                              AuthCore
+SPA                              AuthPlex
     │                                │
     │  GET /authorize (with session) │
     │ ──────────────────────────────►│
@@ -177,7 +177,7 @@ SPA                              AuthCore
 ## 6. Social Login (Google Example)
 
 ```
-SPA                   AuthCore                    Google                    SPA
+SPA                   AuthPlex                    Google                    SPA
  │                       │                           │                       │
  │  GET /authorize       │                           │                       │
  │  ?provider=google     │                           │                       │
@@ -208,19 +208,19 @@ SPA                   AuthCore                    Google                    SPA
  │                       │ ◄─────────────────────────│                       │
  │                       │  6. Fetch user info        │                       │
  │                       │  7. Link external identity │                       │
- │                       │  8. Issue AuthCore code    │                       │
+ │                       │  8. Issue AuthPlex code    │                       │
  │                       │                           │                       │
- │  302 → redirect_uri?code=AUTHCORE_CODE            │                       │
+ │  302 → redirect_uri?code=AUTHPLEX_CODE            │                       │
  │ ◄─────────────────────│                           │                       │
  │                       │                           │                       │
- │  POST /token (exchange AuthCore code)             │                       │
+ │  POST /token (exchange AuthPlex code)             │                       │
  │ ─────────────────────►│                           │                       │
 ```
 
 ## 7. Client Credentials (M2M)
 
 ```
-Backend Service                  AuthCore
+Backend Service                  AuthPlex
     │                                │
     │  POST /token                   │
     │  grant_type=client_credentials │
@@ -243,7 +243,7 @@ Backend Service                  AuthCore
 ## 8. Refresh Token (with Rotation)
 
 ```
-Client                           AuthCore
+Client                           AuthPlex
     │                                │
     │  POST /token                   │
     │  grant_type=refresh_token      │
@@ -280,7 +280,7 @@ Client                           AuthCore
 ## 9. Device Code Flow (RFC 8628)
 
 ```
-Smart TV / CLI                   AuthCore                         User's Phone
+Smart TV / CLI                   AuthPlex                         User's Phone
     │                                │                                │
     │  POST /device/authorize        │                                │
     │  {client_id, scope}            │                                │
@@ -318,7 +318,7 @@ Smart TV / CLI                   AuthCore                         User's Phone
 ## 10. Password Reset via OTP
 
 ```
-Client                           AuthCore                         Email
+Client                           AuthPlex                         Email
     │                                │                               │
     │  POST /otp/request             │                               │
     │  {email, purpose: "reset"}     │                               │
@@ -344,7 +344,7 @@ Client                           AuthCore                         Email
 ## 11. Tenant + Client Setup (Admin)
 
 ```
-Admin                            AuthCore
+Admin                            AuthPlex
     │                                │
     │  POST /tenants                 │
     │  X-API-Key: admin-key          │

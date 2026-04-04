@@ -3,7 +3,7 @@ package discovery
 import (
 	"log/slog"
 
-	"github.com/authcore/internal/domain/oidc"
+	"github.com/authplex/internal/domain/oidc"
 )
 
 // Service provides OIDC discovery document generation.

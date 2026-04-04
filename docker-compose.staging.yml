@@ -1,19 +1,19 @@
 # Staging — Postgres + Redis, API key auth
 # Usage: docker-compose -f docker-compose.staging.yml up
 services:
-  authcore:
+  authplex:
     build: .
     ports:
       - "8080:8080"
     environment:
-      AUTHCORE_ENV: staging
-      AUTHCORE_DATABASE_DSN: postgres://authcore:authcore_staging@postgres:5432/authcore?sslmode=disable
-      AUTHCORE_REDIS_URL: redis://redis:6379
-      AUTHCORE_ADMIN_API_KEY: staging-admin-key-change-me
-      AUTHCORE_ISSUER: http://localhost:8080
-      AUTHCORE_CORS_ORIGINS: http://localhost:5173,http://localhost:3000
-      AUTHCORE_TENANT_MODE: header
-      AUTHCORE_KEY_ROTATION_DAYS: "90"
+      AUTHPLEX_ENV: staging
+      AUTHPLEX_DATABASE_DSN: postgres://authplex:authplex_staging@postgres:5432/authplex?sslmode=disable
+      AUTHPLEX_REDIS_URL: redis://redis:6379
+      AUTHPLEX_ADMIN_API_KEY: staging-admin-key-change-me
+      AUTHPLEX_ISSUER: http://localhost:8080
+      AUTHPLEX_CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+      AUTHPLEX_TENANT_MODE: header
+      AUTHPLEX_KEY_ROTATION_DAYS: "90"
     depends_on:
       postgres:
         condition: service_healthy
@@ -28,15 +28,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: authcore
-      POSTGRES_USER: authcore
-      POSTGRES_PASSWORD: authcore_staging
+      POSTGRES_DB: authplex
+      POSTGRES_USER: authplex
+      POSTGRES_PASSWORD: authplex_staging
     ports:
       - "5432:5432"
     volumes:
       - pgdata_staging:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U authcore"]
+      test: ["CMD-SHELL", "pg_isready -U authplex"]
       interval: 5s
       timeout: 5s
       retries: 5

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/authcore/internal/domain/token"
+	"github.com/authplex/internal/domain/token"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

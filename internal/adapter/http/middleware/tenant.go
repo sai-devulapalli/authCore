@@ -4,10 +4,10 @@ import (
 	"log/slog"
 	"net/http"
 
-	tenantsvc "github.com/authcore/internal/application/tenant"
-	"github.com/authcore/internal/config"
-	"github.com/authcore/internal/domain/shared"
-	"github.com/authcore/pkg/sdk/httputil"
+	tenantsvc "github.com/authplex/internal/application/tenant"
+	"github.com/authplex/internal/config"
+	"github.com/authplex/internal/domain/shared"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // TenantResolver is middleware that extracts tenant from the request

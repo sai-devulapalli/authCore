@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/authcore/internal/config"
-	"github.com/authcore/internal/domain/tenant"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/config"
+	"github.com/authplex/internal/domain/tenant"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

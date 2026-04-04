@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/authcore/internal/domain/client"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	"github.com/authplex/internal/domain/client"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -307,4 +307,104 @@ func TestCreate_HashError(t *testing.T) {
 
 	require.NotNil(t, appErr)
 	assert.Equal(t, apperrors.ErrInternal, appErr.Code)
+}
+
+// --- API Key mock repo ---
+
+type mockAPIKeyRepo struct {
+	mockClientRepo
+	storedClients map[string]client.Client
+	apiKeyHashes  map[string][]byte // clientID -> hash
+}
+
+func newMockAPIKeyRepo() *mockAPIKeyRepo {
+	return &mockAPIKeyRepo{
+		storedClients: make(map[string]client.Client),
+		apiKeyHashes:  make(map[string][]byte),
+	}
+}
+
+func (m *mockAPIKeyRepo) Create(_ context.Context, c client.Client) error {
+	m.storedClients[c.ID] = c
+	return nil
+}
+
+func (m *mockAPIKeyRepo) GetByID(_ context.Context, id, _ string) (client.Client, error) {
+	c, ok := m.storedClients[id]
+	if !ok {
+		return client.Client{}, errors.New("not found")
+	}
+	return c, nil
+}
+
+func (m *mockAPIKeyRepo) UpdateAPIKey(_ context.Context, clientID, _ string, hash []byte) error {
+	m.apiKeyHashes[clientID] = hash
+	return nil
+}
+
+func (m *mockAPIKeyRepo) GetByAPIKeyHash(_ context.Context, hash []byte, _ string) (client.Client, error) {
+	for clientID, stored := range m.apiKeyHashes {
+		if string(stored) == string(hash) {
+			return m.storedClients[clientID], nil
+		}
+	}
+	return client.Client{}, errors.New("not found")
+}
+
+// --- API Key Tests ---
+
+func TestClientSvc_GenerateAPIKey(t *testing.T) {
+	repo := newMockAPIKeyRepo()
+	repo.storedClients["c1"] = client.Client{ID: "c1", TenantID: "t1", ClientType: client.Public}
+	svc := NewService(repo, &mockHasher{}, slog.Default())
+
+	key, appErr := svc.GenerateAPIKey(context.Background(), "c1", "t1")
+
+	require.Nil(t, appErr)
+	assert.NotEmpty(t, key)
+}
+
+func TestClientSvc_GenerateAPIKey_NotFound(t *testing.T) {
+	repo := newMockAPIKeyRepo()
+	svc := NewService(repo, &mockHasher{}, slog.Default())
+
+	_, appErr := svc.GenerateAPIKey(context.Background(), "nonexistent", "t1")
+
+	require.NotNil(t, appErr)
+	assert.Equal(t, apperrors.ErrNotFound, appErr.Code)
+}
+
+func TestClientSvc_ValidateAPIKey(t *testing.T) {
+	repo := newMockAPIKeyRepo()
+	repo.storedClients["c1"] = client.Client{ID: "c1", TenantID: "t1", ClientType: client.Public}
+	svc := NewService(repo, &mockHasher{}, slog.Default())
+
+	rawKey, appErr := svc.GenerateAPIKey(context.Background(), "c1", "t1")
+	require.Nil(t, appErr)
+
+	got, appErr := svc.ValidateAPIKey(context.Background(), rawKey, "t1")
+
+	require.Nil(t, appErr)
+	require.NotNil(t, got)
+	assert.Equal(t, "c1", got.ID)
+}
+
+func TestClientSvc_ValidateAPIKey_WrongKey(t *testing.T) {
+	repo := newMockAPIKeyRepo()
+	repo.storedClients["c1"] = client.Client{ID: "c1", TenantID: "t1", ClientType: client.Public}
+	svc := NewService(repo, &mockHasher{}, slog.Default())
+
+	_, appErr := svc.GenerateAPIKey(context.Background(), "c1", "t1")
+	require.Nil(t, appErr)
+
+	_, appErr = svc.ValidateAPIKey(context.Background(), "wrong-key-value", "t1")
+
+	require.NotNil(t, appErr)
+	assert.Equal(t, apperrors.ErrInvalidClient, appErr.Code)
+}
+
+func TestClientSvc_WithAudit(t *testing.T) {
+	svc := NewService(&mockClientRepo{}, &mockHasher{}, slog.Default())
+	result := svc.WithAudit(nil)
+	assert.NotNil(t, result)
 }

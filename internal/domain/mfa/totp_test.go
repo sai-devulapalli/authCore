@@ -85,10 +85,10 @@ func TestVerifyTOTP_OutsideWindow(t *testing.T) {
 }
 
 func TestBuildOTPAuthURI(t *testing.T) {
-	uri := BuildOTPAuthURI("AuthCore", "user@example.com", "JBSWY3DPEHPK3PXP")
+	uri := BuildOTPAuthURI("AuthPlex", "user@example.com", "JBSWY3DPEHPK3PXP")
 
 	assert.Contains(t, uri, "otpauth://totp/")
-	assert.Contains(t, uri, "AuthCore")
+	assert.Contains(t, uri, "AuthPlex")
 	assert.Contains(t, uri, "user@example.com")
 	assert.Contains(t, uri, "secret=JBSWY3DPEHPK3PXP")
 	assert.Contains(t, uri, "algorithm=SHA1")

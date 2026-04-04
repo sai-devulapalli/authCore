@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	sdkerrors "github.com/authcore/pkg/sdk/errors"
+	sdkerrors "github.com/authplex/pkg/sdk/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -5,14 +5,14 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/authcore/internal/application/auth"
-	clientsvc "github.com/authcore/internal/application/client"
-	mfasvc "github.com/authcore/internal/application/mfa"
-	"github.com/authcore/internal/application/social"
-	tenantsvc "github.com/authcore/internal/application/tenant"
-	usersvc "github.com/authcore/internal/application/user"
-	"github.com/authcore/internal/domain/shared"
-	"github.com/authcore/pkg/sdk/httputil"
+	"github.com/authplex/internal/application/auth"
+	clientsvc "github.com/authplex/internal/application/client"
+	mfasvc "github.com/authplex/internal/application/mfa"
+	"github.com/authplex/internal/application/social"
+	tenantsvc "github.com/authplex/internal/application/tenant"
+	usersvc "github.com/authplex/internal/application/user"
+	"github.com/authplex/internal/domain/shared"
+	"github.com/authplex/pkg/sdk/httputil"
 )
 
 // AuthorizeHandler serves the OAuth 2.0 authorization endpoint.

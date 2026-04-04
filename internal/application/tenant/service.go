@@ -4,11 +4,11 @@ import (
 	"context"
 	"log/slog"
 
-	auditsvc "github.com/authcore/internal/application/audit"
-	domainaudit "github.com/authcore/internal/domain/audit"
-	"github.com/authcore/internal/config"
-	"github.com/authcore/internal/domain/tenant"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	auditsvc "github.com/authplex/internal/application/audit"
+	domainaudit "github.com/authplex/internal/domain/audit"
+	"github.com/authplex/internal/config"
+	"github.com/authplex/internal/domain/tenant"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // Service provides tenant management operations.

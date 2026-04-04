@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/authcore/internal/domain/tenant"
+	"github.com/authplex/internal/domain/tenant"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -84,5 +84,26 @@ func TestTenantRepo_Update_NotFound(t *testing.T) {
 func TestTenantRepo_Delete_NotFound(t *testing.T) {
 	repo := NewInMemoryTenantRepository()
 	err := repo.Delete(context.Background(), "nonexistent")
+	require.Error(t, err)
+}
+
+func TestTenantRepo_IncrementTokenVersion(t *testing.T) {
+	repo := NewInMemoryTenantRepository()
+	ctx := context.Background()
+
+	tn, _ := tenant.NewTenant("t1", "example.com", "https://example.com", tenant.RS256)
+	require.NoError(t, repo.Create(ctx, tn))
+
+	before, _ := repo.GetByID(ctx, "t1")
+	require.NoError(t, repo.IncrementTokenVersion(ctx, "t1"))
+
+	after, err := repo.GetByID(ctx, "t1")
+	require.NoError(t, err)
+	assert.Equal(t, before.TokenVersion+1, after.TokenVersion)
+}
+
+func TestTenantRepo_IncrementTokenVersion_NotFound(t *testing.T) {
+	repo := NewInMemoryTenantRepository()
+	err := repo.IncrementTokenVersion(context.Background(), "nonexistent")
 	require.Error(t, err)
 }

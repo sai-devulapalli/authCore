@@ -17,26 +17,26 @@ import (
 	"testing"
 	"time"
 
-	"github.com/authcore/internal/adapter/cache"
-	adaptcrypto "github.com/authcore/internal/adapter/crypto"
-	adaptemail "github.com/authcore/internal/adapter/email"
-	"github.com/authcore/internal/adapter/http/handler"
-	adapthttp "github.com/authcore/internal/adapter/http/oauth"
-	"github.com/authcore/internal/adapter/http/middleware"
-	"github.com/authcore/internal/adapter/postgres"
-	adaptsms "github.com/authcore/internal/adapter/sms"
-	"github.com/authcore/internal/application/auth"
-	clientsvc "github.com/authcore/internal/application/client"
-	"github.com/authcore/internal/application/discovery"
-	"github.com/authcore/internal/application/jwks"
-	mfasvc "github.com/authcore/internal/application/mfa"
-	providersvc "github.com/authcore/internal/application/provider"
-	"github.com/authcore/internal/application/social"
-	tenantsvc "github.com/authcore/internal/application/tenant"
-	usersvc "github.com/authcore/internal/application/user"
-	"github.com/authcore/internal/config"
-	"github.com/authcore/pkg/sdk/health"
-	"github.com/authcore/pkg/sdk/httputil"
+	"github.com/authplex/internal/adapter/cache"
+	adaptcrypto "github.com/authplex/internal/adapter/crypto"
+	adaptemail "github.com/authplex/internal/adapter/email"
+	"github.com/authplex/internal/adapter/http/handler"
+	adapthttp "github.com/authplex/internal/adapter/http/oauth"
+	"github.com/authplex/internal/adapter/http/middleware"
+	"github.com/authplex/internal/adapter/postgres"
+	adaptsms "github.com/authplex/internal/adapter/sms"
+	"github.com/authplex/internal/application/auth"
+	clientsvc "github.com/authplex/internal/application/client"
+	"github.com/authplex/internal/application/discovery"
+	"github.com/authplex/internal/application/jwks"
+	mfasvc "github.com/authplex/internal/application/mfa"
+	providersvc "github.com/authplex/internal/application/provider"
+	"github.com/authplex/internal/application/social"
+	tenantsvc "github.com/authplex/internal/application/tenant"
+	usersvc "github.com/authplex/internal/application/user"
+	"github.com/authplex/internal/config"
+	"github.com/authplex/pkg/sdk/health"
+	"github.com/authplex/pkg/sdk/httputil"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,7 +44,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-// setupTestServer creates a full AuthCore server backed by real Postgres.
+// setupTestServer creates a full AuthPlex server backed by real Postgres.
 func setupTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	ctx := context.Background()
@@ -57,7 +57,7 @@ func setupTestServer(t *testing.T) *httptest.Server {
 			Env: map[string]string{
 				"POSTGRES_USER":     "test",
 				"POSTGRES_PASSWORD": "test",
-				"POSTGRES_DB":       "authcore_test",
+				"POSTGRES_DB":       "authplex_test",
 			},
 			WaitingFor: wait.ForListeningPort("5432/tcp").WithStartupTimeout(60 * time.Second),
 		},
@@ -71,7 +71,7 @@ func setupTestServer(t *testing.T) *httptest.Server {
 	port, err := pgContainer.MappedPort(ctx, "5432")
 	require.NoError(t, err)
 
-	dsn := fmt.Sprintf("postgres://test:test@%s:%s/authcore_test?sslmode=disable", host, port.Port())
+	dsn := fmt.Sprintf("postgres://test:test@%s:%s/authplex_test?sslmode=disable", host, port.Port())
 
 	db, err := sql.Open("pgx", dsn)
 	require.NoError(t, err)

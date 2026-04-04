@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	auditsvc "github.com/authcore/internal/application/audit"
-	domainaudit "github.com/authcore/internal/domain/audit"
-	domainotp "github.com/authcore/internal/domain/otp"
-	domainuser "github.com/authcore/internal/domain/user"
-	apperrors "github.com/authcore/pkg/sdk/errors"
+	auditsvc "github.com/authplex/internal/application/audit"
+	domainaudit "github.com/authplex/internal/domain/audit"
+	domainotp "github.com/authplex/internal/domain/otp"
+	domainuser "github.com/authplex/internal/domain/user"
+	apperrors "github.com/authplex/pkg/sdk/errors"
 )
 
 // Service provides user management and authentication operations.
@@ -426,6 +426,38 @@ func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) *
 		s.auditSvc.Log(ctx, req.TenantID, u.ID, "user", domainaudit.EventPasswordReset, "user", u.ID, nil, nil)
 	}
 	return nil
+}
+
+// ListUsers returns a paginated list of users for a tenant.
+func (s *Service) ListUsers(ctx context.Context, tenantID string, offset, limit int) ([]UserSummary, int, *apperrors.AppError) {
+	if tenantID == "" {
+		return nil, 0, apperrors.New(apperrors.ErrBadRequest, "tenant_id is required")
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	users, total, err := s.userRepo.ListByTenant(ctx, tenantID, offset, limit)
+	if err != nil {
+		return nil, 0, apperrors.Wrap(apperrors.ErrInternal, "failed to list users", err)
+	}
+
+	summaries := make([]UserSummary, len(users))
+	for i, u := range users {
+		summaries[i] = UserSummary{
+			ID:            u.ID,
+			Email:         u.Email,
+			Name:          u.Name,
+			Phone:         u.Phone,
+			EmailVerified: u.EmailVerified,
+			Enabled:       u.Enabled,
+			CreatedAt:     u.CreatedAt,
+		}
+	}
+	return summaries, total, nil
 }
 
 // ValidateCredentials implements token.UserValidator for the password grant.
