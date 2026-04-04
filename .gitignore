@@ -35,7 +35,13 @@ Thumbs.db
 
 # Debug
 __debug_bin*
+
+# Claude
 CLAUDE.md
 .claude/
+
+# Frontend (managed separately)
 admin/
-CLAUDE.md
+node_modules/
+web/node_modules/
+admin/node_modules/
