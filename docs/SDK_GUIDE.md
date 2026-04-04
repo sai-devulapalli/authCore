@@ -6,7 +6,7 @@ AuthPlex provides SDKs for **5 languages** plus the embedded **Go SDK**:
 
 | SDK | Language | Package | Install |
 |-----|----------|---------|---------|
-| Go (embedded) | Go | `pkg/authplex` | `go get github.com/sai-devulapalli/authCore` |
+| Go (embedded) | Go | `pkg/authplex` | `go get github.com/sai-devulapalli/authplex` |
 | Java | Java 11+ | `com.authplex.sdk` | Maven/Gradle |
 | .NET | C# (.NET 6+) | `AuthPlex.Sdk` | NuGet |
 | Node.js | JavaScript/TypeScript | `@authplex/sdk` | `npm install @authplex/sdk` |
@@ -26,7 +26,7 @@ All wrapper SDKs (Java, .NET, Node.js, Python) are HTTP clients that call the Au
 ```go
 import (
     "database/sql"
-    "github.com/sai-devulapalli/authCore/pkg/authplex"
+    "github.com/sai-devulapalli/authplex/pkg/authplex"
     _ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -1101,7 +1101,7 @@ if len(claims.Endpoints) > 0 {
 
 | Language | Repository |
 |----------|-----------|
-| Go (embedded) | `github.com/sai-devulapalli/authCore/pkg/authplex` |
+| Go (embedded) | `github.com/sai-devulapalli/authplex/pkg/authplex` |
 | Java | `github.com/sai-devulapalli/authplex-java-sdk` |
 | .NET | `github.com/sai-devulapalli/authplex-dotnet-sdk` |
 | Node.js | `github.com/sai-devulapalli/authplex-js` |

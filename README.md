@@ -1,22 +1,22 @@
-# AuthCore
+# AuthPlex
 
 **Headless Identity & Access Management Engine**
 
-AuthCore is a lightweight, multi-tenant IAM engine that provides OIDC/OAuth 2.0 authentication and authorization for any tech stack. No UI — pure API. 15MB Docker image. 720 tests. 85% coverage.
+AuthPlex is a lightweight, multi-tenant IAM engine that provides OIDC/OAuth 2.0 authentication and authorization for any tech stack. No UI — pure API. 15MB Docker image. 720 tests. 85% coverage.
 
 ## Quick Start
 
 ```bash
-make build && ./bin/authcore       # In-memory mode (development)
+make build && ./bin/authplex       # In-memory mode (development)
 ```
 
 ```bash
 # Production (Postgres + Redis)
-AUTHCORE_ENV=production \
-AUTHCORE_DATABASE_DSN="postgres://..." \
-AUTHCORE_REDIS_URL="redis://..." \
-AUTHCORE_ADMIN_API_KEY="your-key" \
-./bin/authcore
+AUTHPLEX_ENV=production \
+AUTHPLEX_DATABASE_DSN="postgres://..." \
+AUTHPLEX_REDIS_URL="redis://..." \
+AUTHPLEX_ADMIN_API_KEY="your-key" \
+./bin/authplex
 ```
 
 ## What It Does
@@ -63,7 +63,7 @@ Health:         /health
 
 ## Client Integration
 
-AuthCore is **headless** — any client in any language integrates via standard OIDC/OAuth 2.0. The OIDC discovery endpoint auto-configures most libraries.
+AuthPlex is **headless** — any client in any language integrates via standard OIDC/OAuth 2.0. The OIDC discovery endpoint auto-configures most libraries.
 
 ### Setup (one-time, via Management API)
 
@@ -155,7 +155,7 @@ curl -X POST .../tenants/my-tenant/clients \
 # pip install PyJWT requests
 import jwt, requests
 
-# Fetch JWKS from AuthCore (cache this)
+# Fetch JWKS from AuthPlex (cache this)
 jwks_client = jwt.PyJWKClient("https://auth.myapp.com/jwks",
                                headers={"X-Tenant-ID": "my-tenant"})
 
@@ -331,7 +331,7 @@ curl -X POST http://localhost:8080/token \
 | [Compliance](docs/COMPLIANCE.md) | GDPR, SOC2, HIPAA, OWASP analysis |
 | [SDK Guide](docs/SDK_GUIDE.md) | Embedded Go SDK, persistence options |
 | [Deployment](docs/DEPLOYMENT.md) | Deployment models, cloud strategies, HA architecture |
-| [Comparison](docs/COMPARISON.md) | AuthCore vs Keycloak vs IdentityServer vs Cognito |
+| [Comparison](docs/COMPARISON.md) | AuthPlex vs Keycloak vs IdentityServer vs Cognito |
 | [Roadmap](docs/ROADMAP.md) | Pending items, SAML/LDAP/Admin UI analysis |
 | [Implementation Tracker](docs/IMPLEMENTATION_TRACKER.md) | Module status, changelog, standards compliance |
 
