@@ -1,6 +1,27 @@
 # AuthPlex vs Alternatives — Detailed Comparison
 
-> **Last updated:** 2026-03-29 | AuthPlex: 273 files, 812 tests, 49 endpoints
+> **Last updated:** 2026-04-05 | AuthPlex: 273 files, 812 tests, 49 endpoints
+
+---
+
+## Addressing Common Concerns
+
+These issues are frequently raised when comparing AuthPlex to Keycloak. Here is the current status of each:
+
+| Concern | Status | Detail |
+|---------|--------|--------|
+| You own security bugs (CVEs, timing attacks, JWT vulnerabilities) | **Mitigated** | No external JWT library — stdlib `crypto/rsa`, `crypto/ecdsa`, `crypto/hmac`. Constant-time comparisons throughout. bcrypt cost 12 for passwords. AES-256-GCM for secrets at rest. Only surface area to audit is in-repo Go code, not third-party black boxes. |
+| Redis — new infra dependency | **Optional** | Redis is only required for production horizontal scaling. In-memory mode (dev, staging, single-node prod) needs only Postgres. Run `./bin/authplex` with no Redis config — it falls back automatically. |
+| No admin UI | **Done** | [authplex-admin](https://github.com/sai-devulapalli/authplex-admin) — full React SPA with tenant CRUD, client/provider/role management, audit log viewer, Playwright e2e tests. Account unlock and session management via admin API (`DELETE /sessions`, `POST /users/:id/unlock`). |
+| Auth Code + PKCE — significant frontend rewrite | **Done** | S256 PKCE is fully implemented. The [web client](https://github.com/sai-devulapalli/authplex-web) is a drop-in login UI. SDKs for Java, .NET, Node.js, Python, Go abstract the PKCE flow. |
+| Email flows (password reset, verification) must be wired externally | **Done** | SMTP adapter ships in the binary (`AUTHPLEX_SMTP_HOST`, `AUTHPLEX_SMTP_PORT`, `AUTHPLEX_SMTP_FROM`). Console adapter (logs OTP to stdout) works in dev with zero config. Email verification fires on `/register`; password reset via `/otp/request` + `/otp/verify`. |
+| Two-repo upgrade coordination for every auth feature | **Addressed** | AuthPlex is versioned as a single Go binary. SDKs pin to the server API version. Upgrades are: pull new binary image, run — no migrations needed for minor versions. Breaking changes are major-version bumped. |
+| No ecosystem — no Spring starters, no community support | **Addressed** | [authplex-spring-boot](https://github.com/sai-devulapalli/authplex-spring-boot) demo + [authplex-spring-client](https://github.com/sai-devulapalli/authplex-spring-client) JWKS integration. SDKs: Java, .NET, Node.js, Python, Go. Spring Boot auto-configures via `jwk-set-uri` — zero custom code for JWT verification. |
+| MFA Unknown / TBD | **Done** | TOTP (RFC 6238) + WebAuthn/FIDO2 + SMS OTP (Twilio) + Email OTP. Per-tenant MFA policy (required / optional). |
+| Social login not supported | **Done** | Google, GitHub, Microsoft, Apple, generic OIDC/OAuth 2.0. |
+| Token revocation needs verification | **Done** | RFC 7009 revocation endpoint + RFC 7662 introspection + server-side opaque session tokens (always revocable instantly) + token family tracking for refresh token replay detection. |
+
+---
 
 ## Overview
 
@@ -154,8 +175,8 @@
 | Admin Auth | JWT-based with 4 roles + API key (backward compat) | Username/password + 2FA | N/A | IAM policies |
 | Encryption at Rest | AES-256-GCM (configurable key) | Vault integration | DPAPI / Azure Key Vault | AWS KMS |
 | TLS Termination | Reverse proxy (nginx/traeger) | Built-in or reverse proxy | Host app | ACM + CloudFront |
-| Security Audit | None (inherits app's audit in sidecar mode) | Multiple CVEs addressed, active security team | Duende security advisories | AWS security compliance |
-| OWASP Compliance | Partial (sidecar inherits app's certs) | Extensive | Partial | Certified (SOC2, HIPAA) |
+| Security Audit | No external audit yet — stdlib crypto only (no JWT lib CVE surface) | Multiple CVEs addressed, active security team | Duende security advisories | AWS security compliance |
+| OWASP Compliance | Partial — constant-time comparisons, bcrypt, AES-256-GCM, user enumeration prevention, rate limiting | Extensive | Partial | Certified (SOC2, HIPAA) |
 | Content Security Policy | No | Yes | Custom | N/A |
 | User Enumeration Prevention | Yes (same error for all login failures) | Configurable | Custom | Yes |
 
