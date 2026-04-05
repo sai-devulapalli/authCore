@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context';
-import { AuthCard, Field, FormError } from './Setup';
+import { AuthCard, Field, FormError } from './shared';
 
 export function ForgotPassword() {
   const { client } = useAuth();
@@ -15,7 +15,6 @@ export function ForgotPassword() {
 
   const handleRequestOTP = async (e: FormEvent) => {
     e.preventDefault();
-    if (!client) { navigate('/setup'); return; }
     if (!email.trim()) { setError('Email is required'); return; }
     setLoading(true);
     setError('');

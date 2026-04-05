@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context';
-import { Setup } from './pages/Setup';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { MFA } from './pages/MFA';
@@ -14,20 +13,13 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function RequireConfig({ children }: { children: ReactNode }) {
-  const { config } = useAuth();
-  if (!config) return <Navigate to="/setup" replace />;
-  return <>{children}</>;
-}
-
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/setup" element={<Setup />} />
-      <Route path="/login" element={<RequireConfig><Login /></RequireConfig>} />
-      <Route path="/register" element={<RequireConfig><Register /></RequireConfig>} />
-      <Route path="/mfa" element={<RequireConfig><MFA /></RequireConfig>} />
-      <Route path="/forgot-password" element={<RequireConfig><ForgotPassword /></RequireConfig>} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/mfa" element={<MFA />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />

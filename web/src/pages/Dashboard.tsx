@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context';
 import type { UserInfo } from '../api/client';
 
 export function Dashboard() {
-  const { client, sessionToken, user: cachedUser, config, clearSession } = useAuth();
+  const { client, sessionToken, user: cachedUser, clearSession } = useAuth();
   const navigate = useNavigate();
   const [user, setUser] = useState<UserInfo | null>(cachedUser);
   const [loading, setLoading] = useState(!cachedUser);
@@ -36,11 +36,6 @@ export function Dashboard() {
       <header className="h-16 bg-white/80 backdrop-blur-md border-b border-outline-variant/20 flex items-center justify-between px-8 sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <span className="font-extrabold text-on-surface text-lg tracking-tight">AuthPlex</span>
-          {config && (
-            <span className="text-xs text-on-surface-variant/50 font-medium ml-2 hidden sm:block">
-              · {config.tenantId}
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -110,13 +105,6 @@ export function Dashboard() {
               </dl>
             </div>
 
-            {/* Server info */}
-            {config && (
-              <div className="flex items-center justify-between px-4 py-3 bg-surface-container rounded-lg text-xs text-on-surface-variant/60">
-                <span className="font-mono">{config.serverUrl} · {config.tenantId}</span>
-                <Link to="/setup" className="text-primary hover:underline ml-3 shrink-0">change</Link>
-              </div>
-            )}
           </div>
         ) : null}
       </main>

@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context';
-import { AuthCard, Field, FormError, Divider } from './Setup';
+import { AuthCard, Field, FormError, Divider } from './shared';
 
 export function Login() {
-  const { client, config, setSession, setPendingMFA } = useAuth();
+  const { client, setSession, setPendingMFA } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,7 +14,6 @@ export function Login() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!client) { navigate('/setup'); return; }
     if (!email.trim() || !password) { setError('Email and password are required'); return; }
     setLoading(true);
     setError('');
@@ -36,11 +35,7 @@ export function Login() {
   };
 
   return (
-    <AuthCard
-      title="Welcome back"
-      subtitle={config ? `Sign in to ${config.tenantId}` : 'Sign in to your account'}
-      icon="person"
-    >
+    <AuthCard title="Welcome back" subtitle="Sign in to your account" icon="person">
       <form onSubmit={handleSubmit} className="space-y-6">
         <Field label="Email">
           <input
@@ -102,16 +97,6 @@ export function Login() {
           </Link>
         </p>
       </form>
-
-      {/* Server/tenant indicator */}
-      {config && (
-        <div className="mt-6 pt-4 border-t border-outline-variant/20 flex items-center justify-between">
-          <span className="text-[10px] text-on-surface-variant/50 font-mono truncate">
-            {config.serverUrl} · {config.tenantId}
-          </span>
-          <Link to="/setup" className="text-[10px] text-primary hover:underline ml-2 shrink-0">change</Link>
-        </div>
-      )}
     </AuthCard>
   );
 }

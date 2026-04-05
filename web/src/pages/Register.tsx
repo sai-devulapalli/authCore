@@ -1,11 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context';
-import { AuthCard, Field, FormError, Divider } from './Setup';
+import { AuthCard, Field, FormError, Divider } from './shared';
 
 export function Register() {
-  const { client, config } = useAuth();
-  const navigate = useNavigate();
+  const { client } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,7 +16,6 @@ export function Register() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!client) { navigate('/setup'); return; }
     if (!name.trim() || !email.trim() || !password) { setError('All fields are required'); return; }
     if (password !== confirmPassword) { setError('Passwords do not match'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
@@ -55,7 +53,7 @@ export function Register() {
   return (
     <AuthCard
       title="Create account"
-      subtitle={config ? `Join ${config.tenantId}` : 'Create your account'}
+      subtitle="Create your account"
       icon="person_add"
     >
       <form onSubmit={handleSubmit} className="space-y-5">

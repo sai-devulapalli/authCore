@@ -1,35 +1,32 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { AuthPlexWebClient, type UserInfo } from './api/client';
 
-interface Config {
-  serverUrl: string;
-  tenantId: string;
+const SERVER_URL = import.meta.env.VITE_AUTHPLEX_SERVER_URL as string;
+const TENANT_ID = import.meta.env.VITE_AUTHPLEX_TENANT_ID as string;
+
+if (!SERVER_URL || !TENANT_ID) {
+  throw new Error('VITE_AUTHPLEX_SERVER_URL and VITE_AUTHPLEX_TENANT_ID must be set');
 }
 
+const client = new AuthPlexWebClient(SERVER_URL, TENANT_ID);
+
 interface AuthContextType {
-  config: Config | null;
-  client: AuthPlexWebClient | null;
+  client: AuthPlexWebClient;
   sessionToken: string | null;
   user: UserInfo | null;
   pendingMFAToken: string | null;
-  configure: (serverUrl: string, tenantId: string) => void;
   setSession: (token: string, user: UserInfo) => void;
   setPendingMFA: (token: string) => void;
   clearSession: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  config: null, client: null, sessionToken: null, user: null, pendingMFAToken: null,
-  configure: () => {}, setSession: () => {}, setPendingMFA: () => {}, clearSession: () => {},
+  client,
+  sessionToken: null, user: null, pendingMFAToken: null,
+  setSession: () => {}, setPendingMFA: () => {}, clearSession: () => {},
 });
 
 export function useAuth() { return useContext(AuthContext); }
-
-function loadConfig(): Config | null {
-  const url = localStorage.getItem('authplex_server_url');
-  const tid = localStorage.getItem('authplex_tenant_id');
-  return url && tid ? { serverUrl: url, tenantId: tid } : null;
-}
 
 function loadSession() {
   const token = sessionStorage.getItem('authplex_session');
@@ -39,24 +36,10 @@ function loadSession() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [config, setConfig] = useState<Config | null>(loadConfig);
-  const [client, setClient] = useState<AuthPlexWebClient | null>(() => {
-    const c = loadConfig();
-    return c ? new AuthPlexWebClient(c.serverUrl, c.tenantId) : null;
-  });
-
   const { token: initToken, user: initUser } = loadSession();
   const [sessionToken, setSessionToken] = useState<string | null>(initToken);
   const [user, setUser] = useState<UserInfo | null>(initUser);
   const [pendingMFAToken, setPendingMFAToken] = useState<string | null>(null);
-
-  const configure = useCallback((serverUrl: string, tenantId: string) => {
-    localStorage.setItem('authplex_server_url', serverUrl);
-    localStorage.setItem('authplex_tenant_id', tenantId);
-    const c = { serverUrl, tenantId };
-    setConfig(c);
-    setClient(new AuthPlexWebClient(serverUrl, tenantId));
-  }, []);
 
   const setSession = useCallback((token: string, u: UserInfo) => {
     sessionStorage.setItem('authplex_session', token);
@@ -79,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ config, client, sessionToken, user, pendingMFAToken, configure, setSession, setPendingMFA, clearSession }}>
+    <AuthContext.Provider value={{ client, sessionToken, user, pendingMFAToken, setSession, setPendingMFA, clearSession }}>
       {children}
     </AuthContext.Provider>
   );

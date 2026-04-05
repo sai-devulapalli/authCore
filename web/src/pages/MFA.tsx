@@ -1,7 +1,7 @@
 import { useState, useRef, type FormEvent, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context';
-import { AuthCard, FormError } from './Setup';
+import { AuthCard, FormError } from './shared';
 
 export function MFA() {
   const { client, pendingMFAToken, setSession } = useAuth();
