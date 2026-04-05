@@ -2,14 +2,14 @@
 -- Audit event logging for compliance.
 
 CREATE TABLE IF NOT EXISTS audit_events (
-    id              TEXT PRIMARY KEY,
-    tenant_id       TEXT NOT NULL,
-    actor_id        TEXT NOT NULL DEFAULT '',
-    actor_type      TEXT NOT NULL DEFAULT 'system',
-    action          TEXT NOT NULL,
-    resource_type   TEXT NOT NULL DEFAULT '',
-    resource_id     TEXT NOT NULL DEFAULT '',
-    ip_address      TEXT DEFAULT '',
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL,
+    actor_id        VARCHAR(100) NOT NULL DEFAULT '',
+    actor_type      VARCHAR(20) NOT NULL DEFAULT 'system',
+    action          VARCHAR(100) NOT NULL,
+    resource_type   VARCHAR(100) NOT NULL DEFAULT '',
+    resource_id     VARCHAR(100) NOT NULL DEFAULT '',
+    ip_address      VARCHAR(45) DEFAULT '',
     user_agent      TEXT DEFAULT '',
     details         JSONB NOT NULL DEFAULT '{}',
     timestamp       TIMESTAMPTZ NOT NULL DEFAULT now()

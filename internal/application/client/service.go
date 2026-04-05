@@ -39,9 +39,15 @@ func NewService(repo client.Repository, hasher client.SecretHasher, logger *slog
 // Create registers a new OAuth client.
 // For confidential clients, generates and returns the secret exactly once.
 func (s *Service) Create(ctx context.Context, req CreateClientRequest) (ClientResponse, *apperrors.AppError) {
-	id, err := generateClientID()
-	if err != nil {
-		return ClientResponse{}, apperrors.Wrap(apperrors.ErrInternal, "failed to generate client ID", err)
+	var id string
+	if req.ClientID != "" {
+		id = req.ClientID
+	} else {
+		var err error
+		id, err = generateClientID()
+		if err != nil {
+			return ClientResponse{}, apperrors.Wrap(apperrors.ErrInternal, "failed to generate client ID", err)
+		}
 	}
 
 	grantTypes := make([]client.GrantType, len(req.GrantTypes))
@@ -57,9 +63,13 @@ func (s *Service) Create(ctx context.Context, req CreateClientRequest) (ClientRe
 
 	var plaintextSecret string
 	if c.ClientType == client.Confidential {
-		secret, err := generateSecret()
-		if err != nil {
-			return ClientResponse{}, apperrors.Wrap(apperrors.ErrInternal, "failed to generate secret", err)
+		secret := req.ClientSecret
+		if secret == "" {
+			var err error
+			secret, err = generateSecret()
+			if err != nil {
+				return ClientResponse{}, apperrors.Wrap(apperrors.ErrInternal, "failed to generate secret", err)
+			}
 		}
 		hash, err := s.hasher.Hash(secret)
 		if err != nil {

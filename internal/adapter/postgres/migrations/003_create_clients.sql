@@ -1,11 +1,14 @@
 -- 003_create_clients.sql
 -- OAuth 2.0 client registry.
+-- id: internal UUID primary key (auto-generated, not exposed to OAuth protocols).
+-- client_id: user-visible OAuth client identifier (e.g. "careos-backend").
 
 CREATE TABLE IF NOT EXISTS clients (
-    id                  TEXT PRIMARY KEY,
-    tenant_id           TEXT NOT NULL,
-    client_name         TEXT NOT NULL,
-    client_type         TEXT NOT NULL CHECK (client_type IN ('public', 'confidential')),
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id           VARCHAR(100) NOT NULL UNIQUE,
+    tenant_id           UUID NOT NULL,
+    client_name         VARCHAR(200) NOT NULL,
+    client_type         VARCHAR(20) NOT NULL CHECK (client_type IN ('public', 'confidential')),
     secret_hash         BYTEA,
     redirect_uris       TEXT[] NOT NULL DEFAULT '{}',
     allowed_scopes      TEXT[] NOT NULL DEFAULT '{}',

@@ -2,10 +2,10 @@
 -- External identity providers for social login.
 
 CREATE TABLE IF NOT EXISTS identity_providers (
-    id              TEXT PRIMARY KEY,
-    tenant_id       TEXT NOT NULL,
-    provider_type   TEXT NOT NULL,
-    client_id       TEXT NOT NULL,
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL,
+    provider_type   VARCHAR(50) NOT NULL,
+    client_id       VARCHAR(200) NOT NULL,
     client_secret   BYTEA,
     scopes          TEXT[] NOT NULL DEFAULT '{}',
     discovery_url   TEXT,

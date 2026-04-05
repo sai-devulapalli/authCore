@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/authplex/internal/domain/webhook"
 )
 
@@ -123,11 +125,7 @@ func sign(secret string, body []byte) string {
 }
 
 func generateID() (string, error) {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
+	return uuid.New().String(), nil
 }
 
 func generateSecret() (string, error) {

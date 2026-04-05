@@ -2,13 +2,13 @@
 -- Refresh token storage with rotation tracking.
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
-    id          TEXT PRIMARY KEY,
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     token       TEXT NOT NULL UNIQUE,
-    client_id   TEXT NOT NULL,
-    subject     TEXT NOT NULL,
-    tenant_id   TEXT NOT NULL,
+    client_id   VARCHAR(100) NOT NULL,
+    subject     UUID NOT NULL,
+    tenant_id   UUID NOT NULL,
     scope       TEXT NOT NULL DEFAULT '',
-    family_id   TEXT NOT NULL,
+    family_id   UUID NOT NULL,
     expires_at  TIMESTAMPTZ NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     revoked_at  TIMESTAMPTZ,

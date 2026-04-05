@@ -2,12 +2,12 @@ package audit
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 
 	webhooksvc "github.com/authplex/internal/application/webhook"
 	domainaudit "github.com/authplex/internal/domain/audit"
@@ -90,9 +90,5 @@ func extractIP(r *http.Request) string {
 }
 
 func generateID() (string, error) {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
+	return uuid.New().String(), nil
 }

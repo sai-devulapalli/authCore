@@ -5,10 +5,11 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base32"
-	"encoding/base64"
 	"encoding/json"
 	"log/slog"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/authplex/internal/application/auth"
 	auditsvc "github.com/authplex/internal/application/audit"
@@ -655,9 +656,5 @@ func (s *Service) VerifyMFAWebAuthn(ctx context.Context, challenge domainmfa.MFA
 }
 
 func generateID() (string, error) {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
+	return uuid.New().String(), nil
 }

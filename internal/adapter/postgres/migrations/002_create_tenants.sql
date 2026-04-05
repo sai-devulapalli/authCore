@@ -2,11 +2,11 @@
 -- Creates the tenants table for multi-tenancy support.
 
 CREATE TABLE IF NOT EXISTS tenants (
-    id              TEXT PRIMARY KEY,
-    domain          TEXT NOT NULL UNIQUE,
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    domain          VARCHAR(253) NOT NULL UNIQUE,
     issuer          TEXT NOT NULL UNIQUE,
-    algorithm       TEXT NOT NULL,
-    active_key_id   TEXT,
+    algorithm       VARCHAR(10) NOT NULL,
+    active_key_id   UUID,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at      TIMESTAMPTZ

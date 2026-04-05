@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates
 
@@ -15,7 +15,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -o /bin/authplex \
     ./cmd/authplex
 
-FROM gcr.io/distroless/static-debian12
+FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates wget
 
 COPY --from=builder /bin/authplex /bin/authplex
 
