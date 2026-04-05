@@ -2,10 +2,10 @@
 -- Role-Based Access Control tables.
 
 CREATE TABLE IF NOT EXISTS roles (
-    id          TEXT PRIMARY KEY,
-    tenant_id   TEXT NOT NULL,
-    name        TEXT NOT NULL,
-    description TEXT DEFAULT '',
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id   UUID NOT NULL,
+    name        VARCHAR(100) NOT NULL,
+    description VARCHAR(500) DEFAULT '',
     permissions TEXT[] NOT NULL DEFAULT '{}',
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS roles (
 );
 
 CREATE TABLE IF NOT EXISTS user_role_assignments (
-    user_id     TEXT NOT NULL,
-    role_id     TEXT NOT NULL,
-    tenant_id   TEXT NOT NULL,
+    user_id     UUID NOT NULL,
+    role_id     UUID NOT NULL,
+    tenant_id   UUID NOT NULL,
     assigned_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (user_id, role_id, tenant_id)
 );

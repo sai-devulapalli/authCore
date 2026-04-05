@@ -2,9 +2,9 @@ package rbac
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"log/slog"
+
+	"github.com/google/uuid"
 
 	auditsvc "github.com/authplex/internal/application/audit"
 	domainaudit "github.com/authplex/internal/domain/audit"
@@ -154,9 +154,5 @@ func (s *Service) GetUserPermissions(ctx context.Context, userID, tenantID strin
 }
 
 func generateID() (string, error) {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
+	return uuid.New().String(), nil
 }

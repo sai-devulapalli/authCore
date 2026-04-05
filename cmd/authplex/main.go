@@ -225,6 +225,9 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 	authSvc.WithRBAC(r.assignment)
 	authSvc.WithAudit(auditService)
 	authSvc.WithClientRepo(r.client)
+	// Wire repos needed for tenant-aware issuer and token version lookups
+	authSvc.WithTenantRepo(r.tenant)
+	authSvc.WithUserRepo(r.user)
 
 	oauthClient := adapthttp.NewHTTPOAuthClient()
 	providerService := providersvc.NewService(r.provider, log)
@@ -306,14 +309,16 @@ func setupServerWithRepos(cfg config.Config, log *slog.Logger, r repos) http.Han
 	mux.HandleFunc("/jwks", jwksHandler.HandleJWKS)
 	mux.Handle("/authorize",
 		tenantResolver.Middleware(http.HandlerFunc(authorizeHandler.HandleAuthorize)))
+	// /token and /revoke: tenant header is optional because refresh_token and
+	// revocation grants can resolve the tenant from the stored token.
 	mux.Handle("/token",
-		authRateLimiter.Middleware(tenantResolver.Middleware(http.HandlerFunc(tokenHandler.HandleToken))))
+		authRateLimiter.Middleware(tenantResolver.Optional().Middleware(http.HandlerFunc(tokenHandler.HandleToken))))
 
 	// OAuth endpoints (tenant-scoped)
 	mux.Handle("/device/authorize",
 		tenantResolver.Middleware(http.HandlerFunc(deviceHandler.HandleDeviceAuthorize)))
 	mux.Handle("/revoke",
-		tenantResolver.Middleware(http.HandlerFunc(revokeHandler.HandleRevoke)))
+		tenantResolver.Optional().Middleware(http.HandlerFunc(revokeHandler.HandleRevoke)))
 	mux.Handle("/introspect",
 		tenantResolver.Middleware(http.HandlerFunc(introspectHandler.HandleIntrospect)))
 

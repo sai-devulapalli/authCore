@@ -2,6 +2,8 @@ package client
 
 // CreateClientRequest is the DTO for creating a new OAuth client.
 type CreateClientRequest struct {
+	ClientID      string   `json:"client_id,omitempty"`      // optional; auto-generated if empty
+	ClientSecret  string   `json:"client_secret,omitempty"`  // optional; auto-generated if empty (confidential only)
 	ClientName    string   `json:"client_name"`
 	ClientType    string   `json:"client_type"`
 	RedirectURIs  []string `json:"redirect_uris"`

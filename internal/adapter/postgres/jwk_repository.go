@@ -88,10 +88,23 @@ func (r *JWKRepository) GetActive(ctx context.Context, tenantID string) (jwk.Key
 func (r *JWKRepository) GetAllPublic(ctx context.Context, tenantID string) ([]jwk.KeyPair, error) {
 	ctx, cancel := WithQueryTimeout(ctx)
 	defer cancel()
-	query := `SELECT id, tenant_id, key_type, algorithm, key_use, public_key, active, created_at, expires_at
-		FROM jwk_pairs WHERE tenant_id = $1 ORDER BY created_at DESC`
 
-	rows, err := r.db.QueryContext(ctx, query, tenantID)
+	var (
+		query string
+		rows  *sql.Rows
+		err   error
+	)
+	// Empty tenantID means "return all active keys across all tenants" — used by the
+	// unauthenticated /jwks endpoint so resource servers can validate any tenant's JWT.
+	if tenantID == "" || tenantID == "default" {
+		query = `SELECT id, tenant_id, key_type, algorithm, key_use, public_key, active, created_at, expires_at
+			FROM jwk_pairs WHERE active = true ORDER BY created_at DESC`
+		rows, err = r.db.QueryContext(ctx, query)
+	} else {
+		query = `SELECT id, tenant_id, key_type, algorithm, key_use, public_key, active, created_at, expires_at
+			FROM jwk_pairs WHERE tenant_id = $1 ORDER BY created_at DESC`
+		rows, err = r.db.QueryContext(ctx, query, tenantID)
+	}
 	if err != nil {
 		return nil, apperrors.Wrap(apperrors.ErrInternal, "failed to query key pairs", err)
 	}

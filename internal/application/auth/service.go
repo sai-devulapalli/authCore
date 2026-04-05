@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	auditsvc "github.com/authplex/internal/application/audit"
 	"github.com/authplex/internal/application/jwks"
 	domainaudit "github.com/authplex/internal/domain/audit"
@@ -158,6 +160,20 @@ func (s *Service) Authorize(ctx context.Context, req AuthorizeRequest) (Authoriz
 		State:       req.State,
 		RedirectURI: req.RedirectURI,
 	}, nil
+}
+
+// GetRefreshTokenTenantID looks up the tenant ID stored with a refresh token.
+// Used by the token handler so that confidential client auth can succeed
+// for refresh_token grants even when X-Tenant-ID is absent.
+func (s *Service) GetRefreshTokenTenantID(ctx context.Context, rawToken string) (string, error) {
+	if s.refreshRepo == nil {
+		return "", apperrors.New(apperrors.ErrInternal, "refresh repo not configured")
+	}
+	rt, err := s.refreshRepo.GetByToken(ctx, rawToken)
+	if err != nil {
+		return "", err
+	}
+	return rt.TenantID, nil
 }
 
 // Exchange routes to the appropriate grant type handler.
@@ -542,19 +558,25 @@ func (s *Service) issueTokensWithEndpoints(ctx context.Context, subject, clientI
 		}
 
 		var tokenVersion int
+		endpointIssuer := "https://authplex"
 		if s.userRepo != nil && subject != "" && tenantID != "" {
 			if u, err := s.userRepo.GetByID(ctx, subject, tenantID); err == nil {
 				tokenVersion = u.TokenVersion
 			}
 		}
 		if s.tenantRepo != nil && tenantID != "" {
-			if t, err := s.tenantRepo.GetByID(ctx, tenantID); err == nil && t.TokenVersion > tokenVersion {
-				tokenVersion = t.TokenVersion
+			if t, err := s.tenantRepo.GetByID(ctx, tenantID); err == nil {
+				if t.TokenVersion > tokenVersion {
+					tokenVersion = t.TokenVersion
+				}
+				if t.Issuer != "" {
+					endpointIssuer = t.Issuer
+				}
 			}
 		}
 
 		accessClaims := token.Claims{
-			Issuer:       "https://authplex",
+			Issuer:       endpointIssuer,
 			Subject:      subject,
 			Audience:     []string{clientID},
 			TenantID:     tenantID,
@@ -604,19 +626,25 @@ func (s *Service) issueTokens(ctx context.Context, subject, clientID, tenantID, 
 
 	// Resolve token version from user + tenant for instant revocation
 	var tokenVersion int
+	issuer := "https://authplex" // default fallback
 	if s.userRepo != nil && subject != "" && tenantID != "" {
 		if u, err := s.userRepo.GetByID(ctx, subject, tenantID); err == nil {
 			tokenVersion = u.TokenVersion
 		}
 	}
 	if s.tenantRepo != nil && tenantID != "" {
-		if t, err := s.tenantRepo.GetByID(ctx, tenantID); err == nil && t.TokenVersion > tokenVersion {
-			tokenVersion = t.TokenVersion
+		if t, err := s.tenantRepo.GetByID(ctx, tenantID); err == nil {
+			if t.TokenVersion > tokenVersion {
+				tokenVersion = t.TokenVersion
+			}
+			if t.Issuer != "" {
+				issuer = t.Issuer
+			}
 		}
 	}
 
 	accessClaims := token.Claims{
-		Issuer:       "https://authplex",
+		Issuer:       issuer,
 		Subject:      subject,
 		Audience:     []string{clientID},
 		TenantID:     tenantID,
@@ -634,7 +662,7 @@ func (s *Service) issueTokens(ctx context.Context, subject, clientID, tenantID, 
 	}
 
 	idClaims := token.Claims{
-		Issuer:       "https://authplex",
+		Issuer:       issuer,
 		Subject:      subject,
 		Audience:     []string{clientID},
 		TenantID:     tenantID,
@@ -715,9 +743,7 @@ func generateSecureCode() (string, error) {
 }
 
 func mustGenerateID() string {
-	b := make([]byte, 16)
-	rand.Read(b) //nolint:errcheck
-	return base64.RawURLEncoding.EncodeToString(b)
+	return uuid.New().String()
 }
 
 // generateUserCode creates an 8-char alphanumeric code for device auth.

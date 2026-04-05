@@ -43,6 +43,17 @@ func (h *TokenHandler) HandleToken(w http.ResponseWriter, r *http.Request) {
 	grantType := r.FormValue("grant_type")
 	tenantID := resolveTenantID(r)
 
+	// For refresh_token grants the tenant can be inferred from the stored token,
+	// so the X-Tenant-ID header is not required. Pre-fetch the tenant ID so
+	// confidential client authentication succeeds even without the header.
+	if grantType == "refresh_token" && tenantID == "" && h.svc != nil {
+		if rt := r.FormValue("refresh_token"); rt != "" {
+			if resolvedID, err := h.svc.GetRefreshTokenTenantID(r.Context(), rt); err == nil && resolvedID != "" {
+				tenantID = resolvedID
+			}
+		}
+	}
+
 	// Validate client if client service is configured
 	scope := r.FormValue("scope")
 

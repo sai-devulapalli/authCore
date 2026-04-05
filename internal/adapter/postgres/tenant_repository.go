@@ -34,10 +34,15 @@ func (r *TenantRepository) Create(ctx context.Context, t tenant.Tenant) error {
 	query := `INSERT INTO tenants (id, domain, issuer, algorithm, active_key_id, token_version, settings, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
+	var activeKeyID *string
+	if t.SigningConfig.ActiveKeyID != "" {
+		activeKeyID = &t.SigningConfig.ActiveKeyID
+	}
+
 	_, err = r.db.ExecContext(ctx, query,
 		t.ID, t.Domain, t.Issuer,
 		string(t.SigningConfig.Algorithm),
-		t.SigningConfig.ActiveKeyID,
+		activeKeyID,
 		t.TokenVersion,
 		settingsJSON,
 		t.CreatedAt, t.UpdatedAt,
@@ -80,10 +85,15 @@ func (r *TenantRepository) Update(ctx context.Context, t tenant.Tenant) error {
 	query := `UPDATE tenants SET domain = $1, issuer = $2, algorithm = $3, active_key_id = $4, settings = $5, updated_at = $6
 		WHERE id = $7 AND deleted_at IS NULL`
 
+	var activeKeyID *string
+	if t.SigningConfig.ActiveKeyID != "" {
+		activeKeyID = &t.SigningConfig.ActiveKeyID
+	}
+
 	result, err := r.db.ExecContext(ctx, query,
 		t.Domain, t.Issuer,
 		string(t.SigningConfig.Algorithm),
-		t.SigningConfig.ActiveKeyID,
+		activeKeyID,
 		settingsJSON,
 		time.Now().UTC(), t.ID,
 	)
@@ -178,7 +188,8 @@ func (r *TenantRepository) List(ctx context.Context, offset, limit int) ([]tenan
 
 func (r *TenantRepository) scanTenant(row *sql.Row) (tenant.Tenant, error) {
 	var t tenant.Tenant
-	var alg, activeKeyID string
+	var alg string
+	var activeKeyID *string
 	var deletedAt *time.Time
 	var settingsRaw []byte
 
@@ -190,9 +201,13 @@ func (r *TenantRepository) scanTenant(row *sql.Row) (tenant.Tenant, error) {
 		return tenant.Tenant{}, apperrors.Wrap(apperrors.ErrInternal, "failed to scan tenant", err)
 	}
 
+	keyID := ""
+	if activeKeyID != nil {
+		keyID = *activeKeyID
+	}
 	t.SigningConfig = tenant.SigningConfig{
 		Algorithm:   tenant.Algorithm(alg),
-		ActiveKeyID: activeKeyID,
+		ActiveKeyID: keyID,
 	}
 	t.DeletedAt = deletedAt
 	if len(settingsRaw) > 0 {
@@ -209,7 +224,8 @@ type scannable interface {
 
 func (r *TenantRepository) scanRow(row scannable) (tenant.Tenant, error) {
 	var t tenant.Tenant
-	var alg, activeKeyID string
+	var alg string
+	var activeKeyID *string
 	var deletedAt *time.Time
 	var settingsRaw []byte
 
@@ -218,9 +234,13 @@ func (r *TenantRepository) scanRow(row scannable) (tenant.Tenant, error) {
 		return tenant.Tenant{}, apperrors.Wrap(apperrors.ErrInternal, "failed to scan tenant row", err)
 	}
 
+	keyID := ""
+	if activeKeyID != nil {
+		keyID = *activeKeyID
+	}
 	t.SigningConfig = tenant.SigningConfig{
 		Algorithm:   tenant.Algorithm(alg),
-		ActiveKeyID: activeKeyID,
+		ActiveKeyID: keyID,
 	}
 	t.DeletedAt = deletedAt
 	if len(settingsRaw) > 0 {

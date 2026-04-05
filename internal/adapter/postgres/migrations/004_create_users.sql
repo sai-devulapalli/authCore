@@ -2,11 +2,11 @@
 -- User accounts for authentication.
 
 CREATE TABLE IF NOT EXISTS users (
-    id              TEXT PRIMARY KEY,
-    tenant_id       TEXT NOT NULL,
-    email           TEXT NOT NULL,
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL,
+    email           VARCHAR(254) NOT NULL,
     password_hash   BYTEA NOT NULL,
-    name            TEXT NOT NULL DEFAULT '',
+    name            VARCHAR(200) NOT NULL DEFAULT '',
     email_verified  BOOLEAN NOT NULL DEFAULT false,
     enabled         BOOLEAN NOT NULL DEFAULT true,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
