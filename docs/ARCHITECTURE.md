@@ -64,7 +64,7 @@
     │                │  │            │  │            │
     │  tenants       │  │  sessions  │  │  RSA-2048  │
     │  users         │  │  auth codes│  │  EC P-256  │
-    │  clients       │  │  device    │  │  bcrypt    │
+    │  clients*      │  │  device    │  │  bcrypt    │
     │  jwk_pairs     │  │  blacklist │  │  AES-256   │
     │  refresh_tokens│  │  state     │  │  HMAC-SHA1 │
     │  providers     │  │  OTPs      │  │  JWT       │
@@ -170,8 +170,8 @@ HTTP Request
 │   │  Postgres    │  │    Redis     │  │  In-Memory │ │
 │   │  (durable)   │  │  (ephemeral) │  │  (fallback)│ │
 │   │              │  │              │  │            │ │
-│   │  9 tables    │  │  7 stores    │  │  2 stores  │ │
-│   │  11 migrations│  │  TTL-based   │  │  TOTP/MFA  │ │
+│   │  15 tables   │  │  7 stores    │  │  2 stores  │ │
+│   │  19 migrations│  │  TTL-based   │  │  TOTP/MFA  │ │
 │   └─────────────┘  └──────────────┘  └────────────┘ │
 │                                                       │
 │   If Redis unavailable → all ephemeral falls back     │
@@ -232,3 +232,62 @@ HTTP Request
 │                                               │
 └──────────────────────────────────────────────┘
 ```
+
+## Database Schema
+
+All tables use proper SQL types — no `TEXT` for bounded or structured data.
+
+### Type Conventions
+
+| Column Kind | SQL Type | Rationale |
+|-------------|----------|-----------|
+| Internal primary key | `UUID DEFAULT gen_random_uuid()` | Globally unique, unguessable, DB-generated |
+| OAuth client identifier | `VARCHAR(100)` | User-visible, human-readable (e.g. `careos-backend`) |
+| FK references to internal PKs | `UUID NOT NULL` | Matches PK type |
+| Email addresses | `VARCHAR(254)` | RFC 5321 max |
+| Display names | `VARCHAR(200)` | Practical upper bound |
+| Algorithm names | `VARCHAR(10)` | e.g. `RS256`, `ES256` |
+| IP addresses | `VARCHAR(45)` | IPv6 max |
+| Phone numbers | `VARCHAR(30)` | E.164 + formatting |
+| Client type / actor type | `VARCHAR(20)–VARCHAR(50)` | Enum-like bounded string |
+| URLs, scopes, user agents | `TEXT` | Genuinely unbounded |
+| Binary data (keys, hashes) | `BYTEA` | Raw bytes |
+
+### Notable Design Decisions
+
+**`clients` table — dual-column identity:**
+```
+id        UUID PRIMARY KEY DEFAULT gen_random_uuid()  -- DB-internal
+client_id VARCHAR(100) NOT NULL UNIQUE                -- OAuth client_id (public)
+```
+The `id` UUID is the database PK (used for FK constraints, RLS). The `client_id` is the OAuth 2.0 client identifier visible in tokens and API calls. This allows human-readable client names (`careos-backend`) while preserving UUID-based DB integrity.
+
+**RLS policy UUID casting:**
+```sql
+USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+```
+`current_setting()` returns `TEXT`; `nullif(..., '')` converts empty string to NULL before casting, so an unset session variable safely matches no rows.
+
+### Migrations
+
+| # | File | Creates |
+|---|------|---------|
+| 001 | `001_create_jwk_pairs.sql` | `jwk_pairs` |
+| 002 | `002_create_tenants.sql` | `tenants` |
+| 003 | `003_create_clients.sql` | `clients` (id UUID + client_id VARCHAR) |
+| 004 | `004_create_users.sql` | `users` |
+| 005 | `005_create_refresh_tokens.sql` | `refresh_tokens` |
+| 006 | `006_create_identity_providers.sql` | `identity_providers` |
+| 007 | `007_create_external_identities.sql` | `external_identities` |
+| 008 | `008_create_mfa.sql` | `totp_enrollments`, `mfa_challenges` |
+| 009 | `009_add_user_phone.sql` | ALTER `users` |
+| 010 | `010_create_rbac.sql` | `roles`, `user_role_assignments` |
+| 011 | `011_create_audit_events.sql` | `audit_events` |
+| 012 | `012_create_webauthn_credentials.sql` | `webauthn_credentials` |
+| 013 | `013_add_token_version.sql` | ALTER `users`, `tenants`, `clients` |
+| 014 | `014_create_admin_users.sql` | `admin_users` |
+| 015 | `015_enable_rls.sql` | RLS policies on 12 tables |
+| 016 | `016_audit_immutability.sql` | Audit append-only rules |
+| 017 | `017_add_foreign_keys.sql` | FK constraints |
+| 018 | `018_add_tenant_settings.sql` | ALTER `tenants` |
+| 019 | `019_create_webhooks.sql` | `webhooks` |

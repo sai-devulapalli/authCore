@@ -2,7 +2,7 @@
 
 **Headless Identity & Access Management Engine**
 
-AuthPlex is a lightweight, multi-tenant IAM engine that provides OIDC/OAuth 2.0 authentication and authorization for any tech stack. No UI — pure API. 15MB Docker image. 720 tests. 85% coverage.
+AuthPlex is a lightweight, multi-tenant IAM engine that provides OIDC/OAuth 2.0 authentication and authorization for any tech stack. No UI — pure API. ~20MB Docker image. 720 tests. 85% coverage.
 
 ## Quick Start
 
@@ -341,11 +341,11 @@ curl -X POST http://localhost:8080/token \
 Files:     ~237 Go files (source + test)
 Tests:     720 assertions across 40 packages
 Coverage:  85.0% (85% threshold enforced)
-Image:     ~15MB (distroless)
+Image:     ~20MB (alpine:3.20)
 RAM:       <300MB
 Deps:      6 (env, testify, x/crypto, pgx, go-redis, testcontainers)
 Modules:   12 completed (0-10 + SDK)
-Migrations: 11 SQL files
+Migrations: 19 SQL files
 ```
 
 ## License
